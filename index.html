@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dev Blog</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;600&display=swap');
+
+    :root {
+      --ink: #111;
+      --accent: #ff3b3b;
+      --paper: #f7f5ef;
+      --blue: #3b82f6;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'IBM Plex Sans', sans-serif;
+      background: var(--paper);
+      color: var(--ink);
+      line-height: 1.6;
+    }
+
+    .container {
+      display: grid;
+      grid-template-columns: 280px 1fr;
+      min-height: 100vh;
+    }
+
+    /* Sidebar */
+    .sidebar {
+      border-right: 3px solid var(--ink);
+      padding: 30px 20px;
+      background: repeating-linear-gradient(
+        45deg,
+        #f7f5ef,
+        #f7f5ef 10px,
+        #f0eee8 10px,
+        #f0eee8 20px
+      );
+    }
+
+    .profile {
+      border: 2px solid var(--ink);
+      padding: 16px;
+      background: white;
+      box-shadow: 6px 6px 0 var(--ink);
+    }
+
+    .profile h1 {
+      font-size: 20px;
+      margin-bottom: 8px;
+    }
+
+    .profile p {
+      font-size: 14px;
+      color: #444;
+    }
+
+    .tag {
+      display: inline-block;
+      margin-top: 10px;
+      padding: 4px 8px;
+      border: 1px solid var(--ink);
+      font-size: 12px;
+      background: var(--blue);
+      color: white;
+    }
+
+    /* Main */
+    .main {
+      padding: 40px;
+    }
+
+    .header {
+      margin-bottom: 30px;
+      border-bottom: 2px dashed var(--ink);
+      padding-bottom: 10px;
+    }
+
+    .header h2 {
+      font-size: 28px;
+    }
+
+    .posts {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      gap: 20px;
+    }
+
+    .post {
+      border: 2px solid var(--ink);
+      padding: 16px;
+      background: white;
+      box-shadow: 5px 5px 0 var(--ink);
+      transition: all 0.2s ease;
+    }
+
+    .post:hover {
+      transform: translate(-3px, -3px);
+      box-shadow: 8px 8px 0 var(--accent);
+    }
+
+    .post h3 {
+      font-size: 18px;
+      margin-bottom: 10px;
+    }
+
+    .post p {
+      font-size: 14px;
+      color: #555;
+    }
+
+    .post .date {
+      margin-top: 12px;
+      font-size: 12px;
+      color: #888;
+    }
+
+    .badge {
+      display: inline-block;
+      margin-top: 8px;
+      font-size: 11px;
+      padding: 2px 6px;
+      border: 1px solid var(--ink);
+      background: var(--accent);
+      color: white;
+    }
+
+  </style>
+</head>
+<body>
+  <div class="container">
+
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <div class="profile">
+        <h1>박종준</h1>
+        <p>
+          10년차 개발자. 문제 해결과 구조 설계를 좋아합니다.<br />
+          실무에서 바로 쓰는 기술을 기록합니다.
+        </p>
+        <span class="tag">Backend / System Design</span>
+      </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="main">
+      <div class="header">
+        <h2>Latest Posts</h2>
+      </div>
+
+      <div class="posts">
+
+        <div class="post">
+          <h3>이진 탐색, 실무에서는 이렇게 쓴다</h3>
+          <p>단순 알고리즘이 아니라, 실제 서비스에서 어떻게 활용되는지 정리.</p>
+          <span class="badge">Algorithm</span>
+          <div class="date">2026.03.01</div>
+        </div>
+
+        <div class="post">
+          <h3>대용량 트래픽 처리 구조 설계</h3>
+          <p>확장 가능한 아키텍처를 만들기 위한 핵심 포인트.</p>
+          <span class="badge">Architecture</span>
+          <div class="date">2026.02.18</div>
+        </div>
+
+        <div class="post">
+          <h3>Node.js 성능 최적화 체크리스트</h3>
+          <p>CPU, 메모리, 이벤트 루프까지 한 번에 점검하기.</p>
+          <span class="badge">Performance</span>
+          <div class="date">2026.02.02</div>
+        </div>
+
+      </div>
+    </main>
+
+  </div>
+</body>
+</html>
