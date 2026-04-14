@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html class="dark" lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Module02 LMS - 시스템 로그인</title>
+
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+
+    <script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#99f7ff",
+                        "on-primary": "#005f64",
+                        "on-primary-container": "#00555a",
+                        "error": "#ff716c",
+                        "error-container": "#9f0519",
+                        "on-surface": "#ecedf6",
+                        "surface-container": "#161a21",
+                        "outline-variant": "#45484f",
+                    },
+                    fontFamily: {
+                        "headline": ["Space Grotesk"],
+                        "body": ["Inter"],
+                        "label": ["Space Grotesk"]
+                    }
+                },
+            },
+        }
+    </script>
+
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0b0e14;
+            color: #ecedf6;
+            /* 메인과 동일한 우주 배경 */
+            background-image:
+                    radial-gradient(circle at 50% 50%, rgba(153, 247, 255, 0.05) 0%, transparent 50%),
+                    url("data:image/svg+xml,%3Csvg width='400' height='400' viewBox='0 0 400 400' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M10 10L50 50M350 350L390 390' stroke='rgba(153, 247, 255, 0.1)' stroke-width='0.5'/%3E%3Ccircle cx='100' cy='100' r='1' fill='rgba(255,255,255,0.2)'/%3E%3Ccircle cx='300' cy='200' r='1' fill='rgba(255,255,255,0.3)'/%3E%3C/svg%3E");
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            vertical-align: middle;
+        }
+        /* 입력창 자동완성 배경색 제어 (다크테마용) */
+        input:-webkit-autofill,
+        input:-webkit-autofill:hover,
+        input:-webkit-autofill:focus,
+        input:-webkit-autofill:active{
+            -webkit-box-shadow: 0 0 0 30px #0f172a inset !important;
+            -webkit-text-fill-color: #99f7ff !important;
+            transition: background-color 5000s ease-in-out 0s;
+        }
+    </style>
+</head>
+
+<body class="min-h-screen flex items-center justify-center p-4 relative overflow-hidden">
+
+<div class="absolute inset-0 pointer-events-none -z-10">
+    <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-primary/5 rounded-full blur-[150px]"></div>
+</div>
+
+<div class="w-full max-w-md z-10 relative">
+
+    <div class="text-center mb-8">
+        <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-primary/10 border border-primary/30 mb-4 shadow-[0_0_20px_rgba(153,247,255,0.2)]">
+            <span class="material-symbols-outlined text-3xl text-primary drop-shadow-[0_0_8px_rgba(153,247,255,0.8)]">admin_panel_settings</span>
+        </div>
+        <h1 class="text-3xl font-headline font-bold text-on-surface tracking-widest m-0">AUTHENTICATION</h1>
+        <p class="text-xs font-label text-primary/70 tracking-[0.3em] mt-2">시스템 보안 인증 프로토콜</p>
+    </div>
+
+    <div class="bg-surface-container/80 backdrop-blur-xl p-8 rounded-2xl border border-outline-variant/20 shadow-[0_0_40px_rgba(0,0,0,0.5)] relative overflow-hidden">
+
+        <div class="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-primary to-transparent"></div>
+
+        <div class="bg-error-container/20 border border-error/30 text-error px-4 py-3 rounded-lg mb-6 flex items-center gap-3 shadow-[inset_0_0_10px_rgba(255,113,108,0.1)]" th:if="${errorMessage}">
+            <span class="material-symbols-outlined text-sm">warning</span>
+            <span class="text-xs font-label tracking-wide" th:text="${errorMessage}"></span>
+        </div>
+
+        <div th:if="${param.error}">
+            <p th:if="${param.reason == null or param.reason[0] == 'invalid'}">
+                아이디 또는 비밀번호가 올바르지 않습니다.
+            </p>
+            <p th:if="${param.reason != null and param.reason[0] == 'inactive'}">
+                비활성화된 계정입니다. 관리자에게 문의하세요.
+            </p>
+            <p th:if="${param.reason != null and param.reason[0] == 'banned'}">
+                제재된 계정입니다. 관리자에게 문의하세요.
+            </p>
+        </div>
+
+        <form th:action="@{/login}" method="post" class="space-y-5">
+
+            <div>
+                <label for="loginId" class="block text-[10px] font-label text-primary tracking-widest mb-1.5 ml-1">OPERATIVE ID</label>
+                <div class="relative group">
+                    <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-sm group-focus-within:text-primary transition-colors">badge</span>
+                    <input type="text" id="loginId" name="loginId" required placeholder="아이디를 입력하세요"
+                           class="w-full bg-slate-900/50 border border-outline-variant/30 rounded-lg py-3 pl-10 pr-4 text-sm text-cyan-100 placeholder-slate-600 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all font-body">
+                </div>
+            </div>
+
+            <div>
+                <label for="password" class="block text-[10px] font-label text-primary tracking-widest mb-1.5 ml-1">SECURITY PASSKEY</label>
+                <div class="relative group">
+                    <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-sm group-focus-within:text-primary transition-colors">vpn_key</span>
+                    <input type="password" id="password" name="password" required placeholder="비밀번호를 입력하세요"
+                           class="w-full bg-slate-900/50 border border-outline-variant/30 rounded-lg py-3 pl-10 pr-4 text-sm text-cyan-100 placeholder-slate-600 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all font-body">
+                </div>
+            </div>
+
+            <button type="submit" class="w-full py-3.5 mt-4 bg-primary text-on-primary-container font-label text-xs tracking-[0.2em] font-bold rounded-lg hover:bg-cyan-300 active:scale-95 transition-all shadow-[0_0_15px_rgba(153,247,255,0.2)] hover:shadow-[0_0_25px_rgba(153,247,255,0.4)] flex justify-center items-center gap-2">
+                <span class="material-symbols-outlined text-sm">login</span>
+                INITIALIZE LOGIN
+            </button>
+        </form>
+    </div>
+
+    <div class="flex justify-center items-center mt-6 gap-6">
+        <a th:href="@{/signup}" class="text-[11px] font-label text-slate-400 hover:text-primary transition-colors tracking-widest flex items-center gap-1 group">
+            <span class="material-symbols-outlined text-[14px] group-hover:drop-shadow-[0_0_5px_rgba(153,247,255,0.8)]">person_add</span> 신규 요원 등록
+        </a>
+        <span class="text-slate-700">|</span>
+        <a th:href="@{/}" class="text-[11px] font-label text-slate-400 hover:text-primary transition-colors tracking-widest flex items-center gap-1 group">
+            <span class="material-symbols-outlined text-[14px] group-hover:drop-shadow-[0_0_5px_rgba(153,247,255,0.8)]">home</span> 메인 터미널
+        </a>
+    </div>
+
+</div>
+</body>
+</html>

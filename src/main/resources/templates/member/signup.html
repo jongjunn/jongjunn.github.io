@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>회원가입</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #f4f7fb;
+            margin: 0;
+            padding: 0;
+        }
+
+        .wrap {
+            width: 520px;
+            margin: 50px auto;
+            background: white;
+            padding: 32px;
+            border-radius: 16px;
+            box-shadow: 0 6px 18px rgba(0,0,0,0.08);
+        }
+
+        h1 {
+            margin-top: 0;
+            margin-bottom: 24px;
+            text-align: center;
+        }
+
+        .field {
+            margin-bottom: 16px;
+        }
+
+        .field label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+        }
+
+        .field input,
+        .field select,
+        .field textarea {
+            width: 100%;
+            padding: 12px;
+            box-sizing: border-box;
+            border: 1px solid #d0d7e2;
+            border-radius: 8px;
+        }
+
+        .btn {
+            width: 100%;
+            padding: 12px;
+            border: none;
+            border-radius: 8px;
+            background: #2d4aa7;
+            color: white;
+            font-size: 16px;
+            cursor: pointer;
+        }
+
+        .sub-links {
+            margin-top: 18px;
+            text-align: center;
+        }
+
+        .sub-links a {
+            text-decoration: none;
+            color: #2d4aa7;
+            margin: 0 8px;
+        }
+
+        .error {
+            background: #ffe5e5;
+            color: #c62828;
+            padding: 10px;
+            border-radius: 8px;
+            margin-bottom: 14px;
+        }
+    </style>
+</head>
+<body>
+<div class="wrap">
+    <h1>회원가입</h1>
+
+    <div class="error" th:if="${errorMessage}" th:text="${errorMessage}"></div>
+
+    <form th:action="@{/signup}" method="post">
+        <div class="field">
+            <label for="loginId">아이디</label>
+            <input type="text" id="loginId" name="loginId" required>
+        </div>
+
+
+        <div class="field">
+            <label for="email">이메일</label>
+            <input type="email" id="email" name="email" required>
+        </div>
+
+        <div class="field">
+            <label for="password">비밀번호</label>
+            <input type="password" id="password" name="password" required>
+        </div>
+
+        <div class="field">
+            <label for="name">이름</label>
+            <input type="text" id="name" name="name" required>
+        </div>
+
+        <div class="field">
+            <label for="phone">전화번호</label>
+            <input type="text" id="phone" name="phone">
+        </div>
+
+        <button type="submit" class="btn">회원가입</button>
+    </form>
+
+    <div class="sub-links">
+        <a th:href="@{/login}">로그인으로</a>
+        <a th:href="@{/}">메인으로</a>
+    </div>
+</div>
+</body>
+</html>

@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html class="dark" lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Module02 LMS - 우주 탐색 프로토콜</title>
+
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+
+
+    <script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "surface-container-low": "#10131a",
+                        "surface-tint": "#99f7ff",
+                        "primary": "#99f7ff",
+                        "primary-dim": "#00e2ee",
+                        "on-primary": "#005f64",
+                        "on-secondary": "#350056",
+                        "on-secondary-container": "#fff5ff",
+                        "surface-container-lowest": "#000000",
+                        "error-container": "#9f0519",
+                        "secondary": "#c97cff",
+                        "on-error-container": "#ffa8a3",
+                        "on-surface": "#ecedf6",
+                        "background": "#0b0e14",
+                        "on-error": "#490006",
+                        "surface": "#0b0e14",
+                        "on-tertiary": "#006164",
+                        "on-primary-fixed": "#004145",
+                        "tertiary-container": "#72eff5",
+                        "on-primary-container": "#00555a",
+                        "surface-container-high": "#1c2028",
+                        "error-dim": "#d7383b",
+                        "surface-variant": "#22262f",
+                        "on-background": "#ecedf6",
+                        "surface-container": "#161a21",
+                        "inverse-primary": "#006a70",
+                        "on-tertiary-container": "#00585b",
+                        "secondary-container": "#9000de",
+                        "primary-container": "#00f1fe",
+                        "surface-container-highest": "#22262f",
+                        "error": "#ff716c",
+                        "surface-dim": "#0b0e14",
+                        "outline-variant": "#45484f",
+                        "tertiary": "#9dfaff",
+                        "surface-bright": "#282c36",
+                        "inverse-surface": "#f9f9ff",
+                        "inverse-on-surface": "#52555c",
+                        "on-surface-variant": "#a9abb3",
+                        "outline": "#73757d"
+                    },
+                    fontFamily: {
+                        "headline": ["Space Grotesk"],
+                        "body": ["Inter"],
+                        "label": ["Space Grotesk"]
+                    }
+                },
+            },
+        }
+    </script>
+
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0b0e14;
+            color: #ecedf6;
+            background-image:
+                    radial-gradient(circle at 50% 50%, rgba(153, 247, 255, 0.05) 0%, transparent 50%),
+                    url("data:image/svg+xml,%3Csvg width='400' height='400' viewBox='0 0 400 400' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M10 10L50 50M350 350L390 390' stroke='rgba(153, 247, 255, 0.1)' stroke-width='0.5'/%3E%3Ccircle cx='100' cy='100' r='1' fill='rgba(255,255,255,0.2)'/%3E%3Ccircle cx='300' cy='200' r='1' fill='rgba(255,255,255,0.3)'/%3E%3C/svg%3E");
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            vertical-align: middle;
+        }
+        .glow-primary { text-shadow: 0 0 8px rgba(153, 247, 255, 0.6); }
+        .planet-glow:hover { box-shadow: 0 0 40px rgba(153, 247, 255, 0.2); }
+    </style>
+</head>
+
+<body class="min-h-screen">
+
+<header class="fixed top-0 w-full z-50 flex justify-between items-center px-6 h-16 bg-slate-950/40 backdrop-blur-xl shadow-[0_0_20px_rgba(153,247,255,0.1)]">
+    <div class="flex items-center gap-8">
+        <span class="text-2xl font-bold tracking-tighter text-cyan-400 drop-shadow-[0_0_8px_rgba(153,247,255,0.6)] font-headline">MODULE02 LMS</span>
+        <span class="hidden md:inline text-xs font-label text-slate-400 tracking-widest uppercase">우주/외계인 세계관 학습 플랫폼</span>
+    </div>
+
+    <div class="flex items-center gap-4">
+        <div class="flex items-center gap-4" th:if="${loginMember == null}">
+            <a th:href="@{/login}" class="text-slate-300 hover:text-cyan-300 font-label text-xs tracking-widest transition-colors">로그인</a>
+            <a th:href="@{/signup}" class="bg-primary/10 border border-primary/30 text-primary px-4 py-1.5 rounded text-xs font-label tracking-widest hover:bg-primary/20 transition-all shadow-[0_0_10px_rgba(153,247,255,0.1)]">회원가입</a>
+        </div>
+
+        <div class="flex items-center gap-4" th:if="${loginMember != null}">
+            <div class="text-right hidden sm:block mr-2">
+                <span class="text-xs font-label tracking-widest text-cyan-400" th:text="|${loginMember.name} 님|"></span>
+                <span class="text-[10px] text-slate-500 font-label tracking-tight ml-1" th:text="|(${loginMember.role})|"></span>
+            </div>
+            <a th:href="@{/logout}" class="flex items-center gap-1 text-slate-400 hover:text-error transition-colors text-xs font-label">
+                <span class="material-symbols-outlined text-sm">power_settings_new</span> 로그아웃
+            </a>
+        </div>
+    </div>
+</header>
+
+<aside class="fixed left-0 top-16 bottom-0 flex flex-col z-40 bg-slate-950/80 backdrop-blur-lg w-64 shadow-[4px_0_24px_rgba(0,0,0,0.5)] bg-gradient-to-r from-slate-900 to-slate-950">
+
+    <div class="p-6 border-b border-outline-variant/10" th:if="${loginMember != null}">
+        <div class="flex items-center gap-3">
+            <div class="h-10 w-10 rounded-lg bg-cyan-400/10 flex items-center justify-center border border-cyan-400/20">
+                <span class="material-symbols-outlined text-cyan-400" data-weight="fill" style="font-variation-settings: 'FILL' 1;">military_tech</span>
+            </div>
+            <div>
+                <p class="text-xs font-label tracking-widest text-cyan-400" th:text="${loginMember.name}">OPERATIVE</p>
+                <p class="text-[10px] text-slate-500 font-label tracking-tight" th:text="|RANK: ${loginMember.role}|">RANK</p>
+            </div>
+        </div>
+    </div>
+
+
+    <nav class="flex-1 py-4">
+        <a href="/" class="flex items-center gap-4 text-cyan-400 bg-cyan-400/10 border-r-4 border-cyan-400 py-3 px-6 shadow-[inset_0_0_15px_rgba(0,241,254,0.2)] font-label">
+            <span class="material-symbols-outlined">public</span>
+            <span class="text-sm tracking-wide">대륙 탐색</span>
+        </a>
+
+        <th:block th:if="${loginMember != null}">
+            <a th:if="${loginMember.role.name() == 'STUDENT'}" th:href="@{/student}" class="flex items-center gap-4 text-slate-500 py-3 px-6 hover:bg-slate-800/40 hover:text-cyan-300 transition-all duration-200 font-label group">
+                <span class="material-symbols-outlined">rocket_launch</span>
+                <span class="text-sm tracking-wide">학생 홈</span>
+            </a>
+
+            <a th:if="${loginMember.role.name() == 'INSTRUCTOR'}" th:href="@{/instructor}" class="flex items-center gap-4 text-slate-500 py-3 px-6 hover:bg-slate-800/40 hover:text-cyan-300 transition-all duration-200 font-label group">
+                <span class="material-symbols-outlined">satellite_alt</span>
+                <span class="text-sm tracking-wide">강사 사령부</span>
+            </a>
+
+            <a th:if="${loginMember.role.name() == 'ADMIN'}" th:href="@{/admin}" class="flex items-center gap-4 text-slate-500 py-3 px-6 hover:bg-slate-800/40 hover:text-cyan-300 transition-all duration-200 font-label group">
+                <span class="material-symbols-outlined">admin_panel_settings</span>
+                <span class="text-sm tracking-wide">관리 시스템</span>
+            </a>
+        </th:block>
+    </nav>
+
+    <div class="p-6 border-t border-outline-variant/10 hidden md:block">
+        <div class="w-full bg-primary/5 border border-primary/20 text-primary/50 py-3 rounded-lg font-label text-xs tracking-widest text-center flex items-center justify-center gap-2">
+            <span class="material-symbols-outlined text-sm animate-pulse">radar</span> SYSTEM ONLINE
+        </div>
+    </div>
+</aside>
+
+<main class="ml-64 pt-24 px-8 pb-12">
+
+    <div class="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-12">
+        <div>
+            <h1 class="text-4xl font-headline font-bold text-on-surface tracking-tight mb-2">
+                TARGET DESTINATIONS
+            </h1>
+            <p class="text-on-surface-variant max-w-xl font-body">
+                탐색할 수 있는 대륙(행성)들을 확인하고 입장을 준비하십시오.
+            </p>
+        </div>
+
+        <form th:action="@{/}" method="get" class="w-full md:w-auto flex gap-3">
+            <input
+                    type="text"
+                    name="query"
+                    th:value="${query}"
+                    placeholder="대륙명 또는 설명 검색"
+                    class="w-full md:w-80 px-4 py-3 rounded-lg bg-surface-container border border-outline-variant/20 text-on-surface placeholder:text-on-surface-variant focus:outline-none focus:ring-2 focus:ring-primary/40"
+            />
+            <button
+                    type="submit"
+                    class="px-5 py-3 rounded-lg bg-primary text-on-primary-container font-label text-xs tracking-[0.2em] font-bold hover:scale-[1.02] active:scale-95 transition-all shadow-[0_0_20px_rgba(153,247,255,0.15)]"
+            >
+                SEARCH
+            </button>
+        </form>
+    </div>
+
+    <div th:if="${#lists.isEmpty(continents)}" class="group relative flex flex-col items-center justify-center border-2 border-dashed border-outline-variant/20 rounded-2xl min-h-[400px] bg-surface-container-lowest/20">
+        <div class="flex flex-col items-center gap-4 text-center p-8">
+            <div class="w-20 h-20 rounded-full border-2 border-dashed border-outline-variant/40 flex items-center justify-center mb-2">
+                <span class="material-symbols-outlined text-4xl text-outline-variant">public_off</span>
+            </div>
+            <h3 class="text-xl font-headline font-bold text-on-surface-variant">UNKNOWN SECTOR</h3>
+            <p class="text-xs font-label tracking-widest text-slate-500"
+               th:text="${query != null and !#strings.isEmpty(query)}
+            ? '검색 결과에 해당하는 대륙이 없습니다.'
+            : '현재 발견된 대륙이 존재하지 않습니다.'">
+                현재 발견된 대륙이 존재하지 않습니다.
+            </p>
+        </div>
+    </div>
+
+    <div th:unless="${#lists.isEmpty(continents)}" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-10">
+
+        <div class="group relative flex flex-col items-center h-full" th:each="continent, stat : ${continents}">
+            <div class="relative w-64 h-64 mb-8">
+                <div class="absolute inset-0 rounded-full overflow-hidden planet-glow transition-all duration-500 group-hover:scale-105 z-10 border-2"
+                     th:classappend="${stat.index % 2 == 0 ? 'border-primary/20' : 'border-secondary/20'}">
+
+                    <img th:if="${continent.thumbnailUrl != null}"
+                         th:src="${continent.thumbnailUrl}"
+                         alt="대륙 썸네일"
+                         class="w-full h-full object-cover"/>
+
+                    <div th:if="${continent.thumbnailUrl == null}"
+                         class="w-full h-full bg-slate-900 flex items-center justify-center text-slate-700">
+                        <span class="material-symbols-outlined text-5xl opacity-50">satellite_alt</span>
+                    </div>
+                </div>
+
+                <div class="absolute -inset-6 border rounded-full border-dashed animate-[spin_20s_linear_infinite]"
+                     th:classappend="${stat.index % 2 == 0 ? 'border-cyan-400/10 group-hover:border-cyan-400/30' : 'border-secondary/10 group-hover:border-secondary/30'}"></div>
+            </div>
+
+            <div class="w-full bg-surface-container/60 backdrop-blur-xl p-6 rounded-xl border border-outline-variant/10 relative overflow-hidden group-hover:bg-surface-container-high transition-colors flex flex-col flex-1">
+
+                <div class="absolute top-0 right-0 p-3 opacity-20 group-hover:opacity-100 transition-opacity">
+                        <span class="text-[10px] font-label tracking-tighter"
+                              th:classappend="${stat.index % 2 == 0 ? 'text-primary' : 'text-secondary'}"
+                              th:text="|SECTOR: 0${stat.count}|"></span>
+                </div>
+
+                <h3 class="text-2xl font-headline font-bold mb-2"
+                    th:classappend="${stat.index % 2 == 0 ? 'text-primary' : 'text-secondary'}"
+                    th:text="${continent.continentName}">대륙명</h3>
+
+                <p class="text-on-surface-variant text-sm mb-6 font-body flex-grow"
+                   th:text="${continent.description}">대륙 설명</p>
+
+                <a th:href="@{/continents/{continentId}(continentId=${continent.continentId})}"
+                   class="block text-center w-full py-3 font-label text-xs tracking-[0.2em] font-bold rounded-lg hover:scale-[1.02] active:scale-95 transition-all"
+                   th:classappend="${stat.index % 2 == 0 ? 'bg-primary text-on-primary-container shadow-[0_0_20px_rgba(153,247,255,0.2)]' : 'bg-secondary text-on-secondary shadow-[0_0_20px_rgba(201,124,255,0.2)]'}">
+                    ENTER SECTOR
+                </a>
+            </div>
+        </div>
+
+    </div>
+</main>
+
+<div class="fixed inset-0 pointer-events-none -z-10">
+    <div class="absolute top-1/4 left-1/4 w-[500px] h-[500px] bg-primary/5 rounded-full blur-[120px]"></div>
+    <div class="absolute bottom-1/4 right-1/4 w-[600px] h-[600px] bg-secondary/5 rounded-full blur-[150px]"></div>
+</div>
+
+</body>
+</html>

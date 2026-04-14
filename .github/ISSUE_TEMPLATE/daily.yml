@@ -1,0 +1,41 @@
+name: Daily
+description: 일일 작업 공유
+title: "[DAILY] "
+labels: ["daily"]
+body:
+  - type: input
+    id: date
+    attributes:
+      label: 날짜
+      placeholder: "ex) 2026-04-05"
+    validations:
+      required: true
+
+  - type: textarea
+    id: yesterday
+    attributes:
+      label: 어제 한 일
+      placeholder: |
+        - 
+        - 
+    validations:
+      required: true
+
+  - type: textarea
+    id: today
+    attributes:
+      label: 오늘 할 일
+      placeholder: |
+        - 
+        - 
+    validations:
+      required: true
+
+  - type: textarea
+    id: blocker
+    attributes:
+      label: 이슈 / 공유 필요 사항
+      placeholder: |
+        - 
+    validations:
+      required: false

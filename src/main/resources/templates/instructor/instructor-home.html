@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html class="dark" lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Module02 LMS - 강사 사령부</title>
+
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+
+    <script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#99f7ff",
+                        "on-primary-container": "#00555a",
+                        "secondary": "#c97cff",
+                        "on-secondary-container": "#fff5ff",
+                        "error": "#ff716c",
+                        "on-surface": "#ecedf6",
+                        "surface-container": "#161a21",
+                        "surface-container-highest": "#22262f",
+                        "outline-variant": "#45484f",
+                    },
+                    fontFamily: {
+                        "headline": ["Space Grotesk"],
+                        "body": ["Inter"],
+                        "label": ["Space Grotesk"]
+                    }
+                },
+            },
+        }
+    </script>
+
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0b0e14;
+            color: #ecedf6;
+            background-image:
+                    radial-gradient(circle at 50% 50%, rgba(153, 247, 255, 0.05) 0%, transparent 50%),
+                    url("data:image/svg+xml,%3Csvg width='400' height='400' viewBox='0 0 400 400' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M10 10L50 50M350 350L390 390' stroke='rgba(153, 247, 255, 0.1)' stroke-width='0.5'/%3E%3Ccircle cx='100' cy='100' r='1' fill='rgba(255,255,255,0.2)'/%3E%3Ccircle cx='300' cy='200' r='1' fill='rgba(255,255,255,0.3)'/%3E%3C/svg%3E");
+        }
+
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            vertical-align: middle;
+        }
+    </style>
+</head>
+
+<body class="min-h-screen">
+
+<header class="fixed top-0 w-full z-50 flex justify-between items-center px-6 h-16 bg-slate-950/40 backdrop-blur-xl shadow-[0_0_20px_rgba(153,247,255,0.1)] border-b border-cyan-400/10">
+    <div class="flex items-center gap-8">
+        <span class="text-2xl font-bold tracking-tighter text-cyan-400 drop-shadow-[0_0_8px_rgba(153,247,255,0.6)] font-headline">
+            MODULE02 LMS
+        </span>
+        <span class="hidden md:inline text-xs font-label text-slate-400 tracking-widest uppercase">
+            우주/외계인 세계관 학습 플랫폼 (강사 사령부)
+        </span>
+    </div>
+
+    <div class="flex items-center gap-4">
+        <div class="flex items-center gap-4" th:if="${loginMember != null}">
+            <div class="text-right hidden sm:block mr-2">
+                <span class="text-xs font-label tracking-widest text-cyan-400"
+                      th:text="|${loginMember.name} 님|"></span>
+                <span class="text-[10px] text-slate-500 font-label tracking-tight ml-1"
+                      th:text="|(${loginMember.role})|"></span>
+            </div>
+            <div class="w-px h-4 bg-outline-variant/30 hidden sm:block"></div>
+            <a th:href="@{/logout}"
+               class="flex items-center gap-1 text-slate-400 hover:text-error transition-colors text-xs font-label">
+                <span class="material-symbols-outlined text-sm">power_settings_new</span>
+                로그아웃
+            </a>
+        </div>
+    </div>
+</header>
+
+<aside class="fixed left-0 top-16 bottom-0 flex flex-col z-40 bg-slate-950/80 backdrop-blur-lg w-64 shadow-[4px_0_24px_rgba(0,0,0,0.5)] bg-gradient-to-r from-slate-900 to-slate-950 hidden md:flex border-r border-cyan-400/5">
+
+    <div class="p-6 border-b border-outline-variant/10" th:if="${loginMember != null}">
+        <div class="flex items-center gap-3">
+            <div class="h-10 w-10 rounded-lg bg-cyan-400/10 flex items-center justify-center border border-cyan-400/20">
+                <span class="material-symbols-outlined text-cyan-400"
+                      style="font-variation-settings: 'FILL' 1;">satellite_alt</span>
+            </div>
+            <div>
+                <p class="text-xs font-label tracking-widest text-cyan-400"
+                   th:text="${loginMember.name}">OPERATIVE</p>
+                <p class="text-[10px] text-slate-500 font-label tracking-tight"
+                   th:text="|ROLE: ${loginMember.role}|">ROLE</p>
+            </div>
+        </div>
+    </div>
+
+    <nav class="flex-1 py-4">
+        <a href="#"
+           class="flex items-center gap-4 text-cyan-400 bg-cyan-400/10 border-r-4 border-cyan-400 py-3 px-6 shadow-[inset_0_0_15px_rgba(0,241,254,0.2)] font-label">
+            <span class="material-symbols-outlined">satellite_alt</span>
+            <span class="text-sm tracking-wide">강사 사령부</span>
+        </a>
+    </nav>
+
+    <div class="p-6 border-t border-outline-variant/10 hidden md:block">
+        <div class="w-full bg-primary/5 border border-primary/20 text-primary/50 py-3 rounded-lg font-label text-xs tracking-widest text-center flex items-center justify-center gap-2">
+            <span class="material-symbols-outlined text-sm animate-pulse">radar</span>
+            COMMAND ONLINE
+        </div>
+    </div>
+</aside>
+
+<main class="md:ml-64 pt-24 px-6 md:px-12 pb-12">
+
+    <section class="max-w-5xl">
+        <div class="mb-10">
+            <h1 class="text-3xl md:text-4xl font-headline font-bold text-on-surface tracking-tight mb-3">
+                INSTRUCTOR COMMAND
+            </h1>
+            <p class="text-slate-400 text-sm md:text-base font-body max-w-2xl leading-relaxed">
+                강사 전용 사령부입니다. 내 정보 확인, 강좌 조회, 신규 강좌 신청 기능으로 이동할 수 있습니다.
+            </p>
+        </div>
+
+        <div class="bg-surface-container/60 backdrop-blur-xl rounded-2xl border border-outline-variant/20 p-6 md:p-8 shadow-lg shadow-cyan-500/5 overflow-hidden relative">
+            <div class="absolute -top-10 -right-10 w-40 h-40 bg-primary/10 rounded-full blur-3xl"></div>
+            <div class="absolute -bottom-10 -left-10 w-40 h-40 bg-secondary/10 rounded-full blur-3xl"></div>
+
+            <div class="relative z-10 mb-8">
+                <div class="flex items-center gap-3 mb-3">
+                    <div class="w-12 h-12 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center">
+                        <span class="material-symbols-outlined text-primary text-2xl">hub</span>
+                    </div>
+                    <div>
+                        <h2 class="text-xl md:text-2xl font-headline font-bold text-on-surface">
+                            강사 기본 기능
+                        </h2>
+                        <p class="text-sm text-slate-400 font-body">
+                            현재 단계에서는 정적 버튼만 배치하고, 상세 기능은 이후 URL 기준으로 연결합니다.
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="relative z-10 grid grid-cols-1 md:grid-cols-3 gap-4">
+
+                <a th:href="@{/instructor/profile}"
+                   class="group rounded-xl border border-primary/20 bg-primary/10 px-6 py-6 hover:bg-primary/15 hover:border-primary/40 transition-all shadow-[0_0_20px_rgba(153,247,255,0.06)]">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="w-12 h-12 rounded-xl bg-slate-950/40 border border-primary/20 flex items-center justify-center">
+                            <span class="material-symbols-outlined text-primary text-2xl">person</span>
+                        </div>
+                        <span class="material-symbols-outlined text-primary/70 group-hover:translate-x-1 transition-transform">
+                            arrow_forward
+                        </span>
+                    </div>
+                    <h3 class="text-lg font-headline font-bold text-on-surface mb-2">내 정보</h3>
+                    <p class="text-sm text-slate-400 font-body leading-relaxed">
+                        강사 프로필 확인 및 이후 수정 기능으로 이어질 페이지입니다.
+                    </p>
+                </a>
+
+                <a th:href="@{/instructor/courses}"
+                   class="group rounded-xl border border-secondary/20 bg-secondary/10 px-6 py-6 hover:bg-secondary/15 hover:border-secondary/40 transition-all shadow-[0_0_20px_rgba(201,124,255,0.06)]">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="w-12 h-12 rounded-xl bg-slate-950/40 border border-secondary/20 flex items-center justify-center">
+                            <span class="material-symbols-outlined text-secondary text-2xl">library_books</span>
+                        </div>
+                        <span class="material-symbols-outlined text-secondary/70 group-hover:translate-x-1 transition-transform">
+                            arrow_forward
+                        </span>
+                    </div>
+                    <h3 class="text-lg font-headline font-bold text-on-surface mb-2">내 강좌</h3>
+                    <p class="text-sm text-slate-400 font-body leading-relaxed">
+                        내가 담당하는 강좌 목록과 이후 강좌 상세 이동 기능으로 이어질 페이지입니다.
+                    </p>
+                </a>
+
+                <a th:href="@{/instructor/courses/apply}"
+                   class="group rounded-xl border border-outline-variant/30 bg-slate-900/40 px-6 py-6 hover:border-primary/30 hover:bg-slate-900/70 transition-all shadow-[0_0_20px_rgba(153,247,255,0.04)]">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="w-12 h-12 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center">
+                            <span class="material-symbols-outlined text-primary text-2xl">add_box</span>
+                        </div>
+                        <span class="material-symbols-outlined text-primary/70 group-hover:translate-x-1 transition-transform">
+                            arrow_forward
+                        </span>
+                    </div>
+                    <h3 class="text-lg font-headline font-bold text-on-surface mb-2">강좌 신청</h3>
+                    <p class="text-sm text-slate-400 font-body leading-relaxed">
+                        신규 강좌 신청 폼으로 이동하는 URL입니다. 이후 비공개 강좌 등록 흐름으로 연결합니다.
+                    </p>
+                </a>
+
+            </div>
+        </div>
+    </section>
+
+</main>
+
+<div class="fixed inset-0 pointer-events-none -z-10">
+    <div class="absolute top-1/4 left-1/4 w-[400px] h-[400px] bg-primary/5 rounded-full blur-[120px]"></div>
+    <div class="absolute bottom-1/4 right-1/4 w-[500px] h-[500px] bg-secondary/5 rounded-full blur-[150px]"></div>
+</div>
+
+</body>
+</html>

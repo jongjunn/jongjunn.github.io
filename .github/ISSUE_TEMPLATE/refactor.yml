@@ -1,0 +1,32 @@
+name: Refactor
+description: 구조 개선 / 중복 제거
+title: "[REFACTOR] "
+labels: ["refactor"]
+body:
+  - type: textarea
+    id: target
+    attributes:
+      label: 개선 대상 / 이유
+      placeholder: "무엇을 왜 리팩토링하는지 작성"
+    validations:
+      required: true
+
+  - type: textarea
+    id: work
+    attributes:
+      label: 작업 내용
+      placeholder: |
+        - 
+        - 
+    validations:
+      required: true
+
+  - type: textarea
+    id: done
+    attributes:
+      label: 완료 조건
+      placeholder: |
+        - 
+        - 
+    validations:
+      required: true

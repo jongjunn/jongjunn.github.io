@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title th:text="${detail.continent.continentName} + ' 상세'">대륙 상세</title>
+    <style>
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background: #0b1020;
+            color: #f5f7ff;
+        }
+
+        .container {
+            width: 1100px;
+            margin: 0 auto;
+            padding: 40px 20px 80px;
+        }
+
+        .top-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+        }
+
+        .top-bar a {
+            color: #fff;
+            text-decoration: none;
+            padding: 10px 16px;
+            border: 1px solid #5f7cff;
+            border-radius: 8px;
+        }
+
+        .hero {
+            background: linear-gradient(135deg, #111933, #1d295f);
+            border-radius: 18px;
+            padding: 32px;
+            margin-bottom: 32px;
+        }
+
+        .hero h1 {
+            margin-top: 0;
+            margin-bottom: 12px;
+        }
+
+        .hero p {
+            margin: 0;
+            line-height: 1.6;
+            color: #d9dff8;
+        }
+
+        .section {
+            margin-bottom: 36px;
+            background: #121a35;
+            border-radius: 18px;
+            padding: 28px;
+        }
+
+        .section h2 {
+            margin-top: 0;
+            margin-bottom: 20px;
+        }
+
+        .course-list, .post-list {
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+        }
+
+        .card {
+            background: #1a2447;
+            border-radius: 14px;
+            padding: 18px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .card-left h3 {
+            margin: 0 0 8px;
+        }
+
+        .card-left p {
+            margin: 4px 0;
+            color: #d8def6;
+        }
+
+        .price {
+            font-weight: bold;
+            color: #7ee0ff;
+        }
+
+        .btn {
+            display: inline-block;
+            padding: 10px 14px;
+            border-radius: 8px;
+            background: #5f7cff;
+            color: white;
+            text-decoration: none;
+            margin-left: 8px;
+        }
+
+        .btn.secondary {
+            background: transparent;
+            border: 1px solid #5f7cff;
+        }
+
+        .empty {
+            color: #b8c1e7;
+        }
+
+        .notice-badge {
+            display: inline-block;
+            font-size: 12px;
+            padding: 4px 8px;
+            margin-right: 8px;
+            border-radius: 999px;
+            background: #ffb648;
+            color: #1d1d1d;
+            font-weight: bold;
+        }
+
+        .login-guide {
+            font-size: 14px;
+            color: #a9b6ec;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+
+    <div class="top-bar">
+        <a th:href="@{/}">← 메인으로</a>
+        <a th:href="@{/login}">로그인</a>
+    </div>
+
+    <section class="hero">
+        <h1 th:text="${detail.continent.continentName}">대륙명</h1>
+        <p th:text="${detail.continent.description}">대륙 설명</p>
+    </section>
+
+    <section class="section">
+        <h2>강좌 목록</h2>
+
+        <div class="course-list" th:if="${!#lists.isEmpty(detail.courses)}">
+            <div class="card" th:each="course : ${detail.courses}">
+                <div class="card-left">
+                    <h3 th:text="${course.courseTitle}">강좌명</h3>
+                    <p>
+                        강사 :
+                        <span th:text="${course.instructorName}">강사명</span>
+                    </p>
+                    <p class="price" th:text="${#numbers.formatInteger(course.price, 3, 'COMMA')} + '원'">가격</p>
+                </div>
+                <div>
+                    <a class="btn"
+                       th:href="@{/courses/{courseId}(courseId=${course.courseId})}">
+                        강좌 세부
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <p class="empty" th:if="${#lists.isEmpty(detail.courses)}">
+            현재 공개된 강좌가 없습니다.
+        </p>
+
+        <p class="login-guide">강좌 상세 및 수강 기능은 로그인 후 이용할 수 있습니다.</p>
+    </section>
+
+    <section class="section">
+        <h2>대륙 게시판 TOP 10</h2>
+
+        <div class="post-list" th:if="${!#lists.isEmpty(detail.posts)}">
+            <div class="card" th:each="post : ${detail.posts}">
+                <div class="card-left">
+                    <h3>
+                        <span class="notice-badge" th:if="${post.notice}">공지</span>
+                        <span th:text="${post.title}">게시글 제목</span>
+                    </h3>
+                    <p>
+                        작성자 :
+                        <span th:text="${post.writerName}">작성자명</span>
+                    </p>
+                    <p th:text="${#temporals.format(post.createdAt, 'yyyy-MM-dd HH:mm')}">작성일시</p>
+                </div>
+            </div>
+        </div>
+
+        <p class="empty" th:if="${#lists.isEmpty(detail.posts)}">
+            아직 게시글이 없습니다.
+        </p>
+
+        <a class="btn secondary"
+           th:href="@{/continents/{continentId}/posts(continentId=${detail.continent.continentId})}">
+            게시판 전체 보기
+        </a>
+        <p class="login-guide">게시글 전체 조회 및 작성 기능은 로그인 후 이용할 수 있습니다.</p>
+    </section>
+
+</div>
+</body>
+</html>
