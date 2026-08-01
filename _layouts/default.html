@@ -11,11 +11,11 @@
   <header class="nav">
     <div class="nav-inner">
       <a class="brand" href="{{ '/' | relative_url }}">{{ site.title }}</a>
-      <nav class="links">
-        <a href="{{ '/' | relative_url }}">Home</a>
-        <a href="{{ '/about/' | relative_url }}">About</a>
-        <a href="{{ '/resume/' | relative_url }}">Resume</a>
-        <a class="link-gh" href="https://github.com/jongjunn" target="_blank" rel="noopener">GitHub</a>
+      <nav class="links" aria-label="Primary">
+        <a class="nav-home" href="{{ '/' | relative_url }}">Home</a>
+        <a class="nav-about" href="{{ '/about/' | relative_url }}">About</a>
+        <a class="nav-resume" href="{{ '/resume/' | relative_url }}">Resume</a>
+        <a class="nav-github link-gh" href="https://github.com/jongjunn" target="_blank" rel="noopener">GitHub</a>
       </nav>
     </div>
   </header>

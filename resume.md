@@ -2,23 +2,29 @@
 layout: page
 title: Resume
 permalink: /resume/
+hide_title: true
 ---
 
-박종준  
-Backend Developer
+<section class="resume-head">
+  <h1>박종준</h1>
+  <p class="resume-role">Backend Developer</p>
 
-- Email: <jongjunny2001@gmail.com>
-- GitHub: [jongjunn](https://github.com/jongjunn)
-- Blog: [jongjunn.github.io](https://jongjunn.github.io)
+  <p class="resume-contact">
+    Email: <a href="mailto:jongjunny2001@gmail.com"><strong>jongjunny2001@gmail.com</strong></a><br>
+    GitHub: <a href="https://github.com/jongjunn"><strong>jongjunn</strong></a><br>
+    Blog: <a href="https://jongjunn.github.io/"><strong>jongjunn.github.io</strong></a>
+  </p>
 
-## Summary
-
-- 지원 포지션: 신입/주니어 백엔드 개발자
-- 교육: 원티드 백엔드 개발자 양성과정 (2026.02 ~ 2026.08)
-- 대표 프로젝트: Flown LMS (2026.06 ~ 2026.07, 총 6명 / 백엔드 4명, 프론트엔드 2명)
-- 대표 코드: [Hard-Click-BackEnd](https://github.com/Hard-Click/Hard-Click-BackEnd) (`develop` 기준 1,049 commits, `jongjunn` 236 commits)
-- 기여 확인: [작성 PR 보기](https://github.com/Hard-Click/Hard-Click-BackEnd/pulls?q=is%3Apr+author%3Ajongjunn), [작성 커밋 보기](https://github.com/Hard-Click/Hard-Click-BackEnd/commits/develop/?author=jongjunn)
-- 입사 가능 시점: 협의 가능
+  <h2>Summary</h2>
+  <dl class="resume-summary">
+    <div><dt>지원 포지션</dt><dd>신입/주니어 백엔드 개발자</dd></div>
+    <div><dt>교육</dt><dd>원티드 백엔드 개발자 양성과정 (2026.02 ~ 2026.08)</dd></div>
+    <div><dt>대표 프로젝트</dt><dd>Flown LMS (2026.06 ~ 2026.07, 총 6명 / 백엔드 4명, 프론트엔드 2명)</dd></div>
+    <div><dt>대표 코드</dt><dd><a href="https://github.com/Hard-Click/Hard-Click-BackEnd"><strong>Hard-Click-BackEnd</strong></a> (develop 기준 1,049 commits, jongjunn 236 commits)</dd></div>
+    <div><dt>기여 확인</dt><dd><a href="https://github.com/Hard-Click/Hard-Click-BackEnd/pulls?q=is%3Apr+author%3Ajongjunn"><strong>작성 PR 보기</strong></a>, <a href="https://github.com/Hard-Click/Hard-Click-BackEnd/commits/develop/?author=jongjunn"><strong>작성 커밋 보기</strong></a></dd></div>
+    <div><dt>입사 가능 시점</dt><dd>협의 가능</dd></div>
+  </dl>
+</section>
 
 ## Skills
 

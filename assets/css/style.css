@@ -113,6 +113,10 @@ a { color: inherit; }
   text-decoration: none;
 }
 .links { display: flex; align-items: center; gap: 4px; }
+.links .nav-home { order: 1; }
+.links .nav-about { order: 2; }
+.links .nav-resume { order: 3; }
+.links .nav-github { order: 4; }
 .links a {
   text-decoration: none;
   color: var(--text-sub);
@@ -329,6 +333,50 @@ a { color: inherit; }
 @media (prefers-color-scheme: dark) { .post .content blockquote { background: #24262C; } }
 .post .content blockquote p { margin: .4em 0; }
 
+/* resume */
+.resume-head {
+  margin-bottom: 2.2rem;
+}
+.resume-head h1 {
+  margin: 0 0 .2rem;
+  font-size: clamp(2rem, 4.8vw, 2.7rem);
+  line-height: 1.22;
+  font-weight: 800;
+  letter-spacing: 0;
+  color: var(--text);
+}
+.resume-role {
+  margin: 0 0 1rem;
+  color: var(--text-sub);
+  font-size: 1.08rem;
+  font-weight: 650;
+}
+.resume-contact {
+  margin: 0 0 1.8rem;
+  color: var(--text-body);
+  line-height: 1.8;
+}
+.resume-head h2 {
+  margin-top: 0;
+}
+.resume-summary {
+  margin: .8rem 0 0;
+}
+.resume-summary div {
+  display: grid;
+  grid-template-columns: 136px 1fr;
+  gap: 14px;
+  padding: 7px 0;
+}
+.resume-summary dt {
+  color: var(--text-sub);
+  font-weight: 700;
+}
+.resume-summary dd {
+  margin: 0;
+  color: var(--text-body);
+}
+
 /* tables */
 .post .content table {
   width: 100%;
@@ -431,6 +479,11 @@ a { color: inherit; }
   .links a {
     padding: 6px 10px;
     font-size: .86rem;
+  }
+  .resume-summary div {
+    grid-template-columns: 1fr;
+    gap: 2px;
+    padding: 8px 0;
   }
 }
 
