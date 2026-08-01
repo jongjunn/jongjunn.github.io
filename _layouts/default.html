@@ -14,16 +14,21 @@
       <nav class="links">
         <a href="{{ '/' | relative_url }}">Home</a>
         <a href="{{ '/about/' | relative_url }}">About</a>
-        <a href="https://github.com/jongjunn" target="_blank" rel="noopener">GitHub</a>
+        <a class="link-gh" href="https://github.com/jongjunn" target="_blank" rel="noopener">GitHub</a>
       </nav>
     </div>
   </header>
+
   <main class="wrap">
     {{ content }}
   </main>
+
   <footer class="foot">
-    <span>© 2026 박종준</span>
-    <span>백엔드 · 결제 정합성 · 동시성</span>
+    <div class="foot-inner">
+      <span class="foot-brand">{{ site.title }}</span>
+      <span class="foot-desc">백엔드 · 결제 정합성 · 동시성 · 트러블슈팅</span>
+      <span class="foot-copy">© 2026 박종준</span>
+    </div>
   </footer>
 </body>
 </html>

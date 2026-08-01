@@ -2,6 +2,7 @@
 layout: default
 ---
 <article class="post">
+  <a class="back-top" href="{{ '/' | relative_url }}">← 글 목록</a>
   <div class="cats">
     {% for c in page.categories %}<span class="tag">{{ c }}</span>{% endfor %}
   </div>
