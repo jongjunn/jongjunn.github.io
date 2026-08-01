@@ -5,6 +5,7 @@ author:
 email: jongjunny2001@gmail.com
 baseurl: ""
 url: "https://jongjunn.github.io"
+future: true
 plugins:
   - jekyll-feed
   - jekyll-seo-tag
