@@ -417,6 +417,23 @@ a { color: inherit; }
   .card { padding: 22px 22px 20px; }
 }
 
+@media (max-width: 520px) {
+  .nav-inner {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .links {
+    width: 100%;
+    overflow-x: auto;
+    padding-bottom: 2px;
+  }
+  .links a {
+    padding: 6px 10px;
+    font-size: .86rem;
+  }
+}
+
 /* ---------- motion ---------- */
 @media (prefers-reduced-motion: reduce) {
   * { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
