@@ -35,6 +35,51 @@ Flown LMS에서 결제·주문·환불 도메인을 맡으며 가장 중요하�
 
 Redis 락만으로 결제를 완전히 설명하지 않은 이유는 분명하다. 락은 동시 진입을 줄이는 장치이고, 최종 진실은 DB의 주문 상태다. 락을 잡기 전과 잡은 후에 주문 상태를 다시 확인해야, 거의 동시에 들어온 요청도 이미 처리된 주문으로 안전하게 돌릴 수 있다.
 
+실제 결제 확정 서비스의 핵심 흐름은 아래와 같다. `READY`가 아닌 주문은 바로 멱등 응답으로 돌리고, `SETNX` 락을 잡은 뒤에도 주문을 다시 읽는다. PG confirm은 이 두 방어선을 지난 뒤에만 호출된다.
+
+```java
+// ConfirmOrderPaymentService.java
+private Result doConfirm(Long memberId, String orderNo, String paymentKey, Integer amount, String idempotencyKey) {
+    Order order = findOwnedOrder(memberId, orderNo);
+
+    if (order.getStatus() != OrderStatus.READY) {
+        return new Result(orderNo, order.getStatus(), null, true);
+    }
+    if (order.getFinalAmount() != amount) {
+        throw new BusinessException(ErrorCode.ORDER_AMOUNT_MISMATCH);
+    }
+
+    String lockKey = LOCK_KEY_PREFIX + idempotencyKey;
+    String lockValue = UUID.randomUUID().toString();
+    Boolean acquired = redisTemplate.opsForValue().setIfAbsent(lockKey, lockValue, LOCK_TTL);
+    if (acquired == null || !acquired) {
+        throw new BusinessException(ErrorCode.DUPLICATE_PAYMENT_REQUEST);
+    }
+
+    try {
+        Order raced = findOwnedOrder(memberId, orderNo);
+        if (raced.getStatus() != OrderStatus.READY) {
+            return new Result(orderNo, raced.getStatus(), null, true);
+        }
+
+        String pgTransactionId = pgClient.confirm(paymentKey, orderNo, amount);
+        orderRepository.markPaid(orderNo, LocalDateTime.now(clock), pgTransactionId);
+        dispatchAccessGrant(raced);
+        return new Result(orderNo, OrderStatus.PAID, pgTransactionId, false);
+    } finally {
+        releaseLockSafely(lockKey, lockValue);
+    }
+}
+```
+
+락 해제도 단순 `DEL`이 아니라 토큰을 비교한 뒤 지운다. 락 TTL이 만료된 뒤 다른 요청이 같은 key를 잡았는데, 늦게 끝난 요청이 남의 락을 지우는 상황을 막기 위해서다.
+
+```java
+private static final DefaultRedisScript<Long> UNLOCK_SCRIPT = new DefaultRedisScript<>(
+        "if redis.call('get', KEYS[1]) == ARGV[1] then return redis.call('del', KEYS[1]) else return 0 end",
+        Long.class);
+```
+
 동시성 테스트에서는 동일 멱등키로 50개 스레드가 동시에 결제 확정을 호출했을 때 PG confirm과 DB `markPaid`가 각각 1회만 실행되는지 확인했다. 이 테스트가 증명하는 범위는 "같은 멱등키의 동시 요청에서 중복 PG 호출을 막는다"는 것이다. k6 p95, 처리량, 실서비스 장애율은 측정하지 않았으므로 성과 수치로 말하지 않았다.
 
 ## PG 호출과 DB 트랜잭션의 경계
@@ -42,6 +87,35 @@ Redis 락만으로 결제를 완전히 설명하지 않은 이유는 분명하�
 외부 PG 호출을 DB 트랜잭션 안에 넣으면 구현은 단순해 보인다. 하지만 PG가 느려지는 동안 DB 커넥션을 계속 잡게 되고, 결제와 무관한 API까지 영향을 받을 수 있다.
 
 그래서 PG 호출은 DB 트랜잭션 밖에 두고, 내부 상태 변경은 짧게 가져가는 쪽을 택했다. 이 선택은 하나의 큰 원자성을 포기하는 대신, 긴 네트워크 대기가 DB 트랜잭션을 붙잡지 않게 한다. 대신 PG 성공 후 DB 반영 실패 같은 보정 리스크가 남는다. 이 리스크는 로그, 메트릭, 재시도 가능 경로로 드러내야 한다.
+
+Toss 연동부에서도 응답값을 그대로 신뢰하지 않고 요청값과 다시 대조했다. 클라이언트가 보낸 금액을 믿는 것이 아니라, PG 응답이 우리가 승인하려던 결제와 같은지 확인하는 경계다.
+
+```java
+// TossPaymentClient.java
+Map<String, Object> response = restClient.post()
+        .uri("/v1/payments/confirm")
+        .body(Map.of(
+                "paymentKey", paymentKey,
+                "orderId", orderId,
+                "amount", amount
+        ))
+        .retrieve()
+        .body(Map.class);
+
+String confirmedPaymentKey = Objects.toString(response != null ? response.get("paymentKey") : null, null);
+String confirmedOrderId = Objects.toString(response != null ? response.get("orderId") : null, null);
+Object totalAmount = response != null ? response.get("totalAmount") : null;
+
+if (!confirmedPaymentKey.equals(paymentKey)) {
+    throw new TossPaymentException("응답 paymentKey가 요청값과 다릅니다. orderId=" + orderId);
+}
+if (!Objects.equals(confirmedOrderId, orderId)) {
+    throw new TossPaymentException("응답 orderId가 요청값과 다릅니다. orderId=" + orderId);
+}
+if (totalAmount == null || !String.valueOf(totalAmount).equals(String.valueOf(amount))) {
+    throw new TossPaymentException("응답 금액이 요청 금액과 다릅니다. orderId=" + orderId);
+}
+```
 
 ## 지급 실패를 조용히 넘기지 않기
 
@@ -53,6 +127,31 @@ Redis 락만으로 결제를 완전히 설명하지 않은 이유는 분명하�
 - 권한 지급 실패를 `order.payment.access_grant.failed` 메트릭과 ERROR 로그로 표면화했다.
 - 멱등 재호출 경로에서도 `PAID` 주문에 한해 권한 지급을 다시 시도하도록 했다.
 
+권한 지급 실패는 주문을 되돌리지 않고 운영자가 볼 수 있는 실패로 남겼다. 결제는 이미 PG에서 확정된 외부 사실이기 때문에, 내부 지급 실패를 조용히 삼키는 대신 메트릭과 로그로 드러냈다.
+
+```java
+// ConfirmOrderPaymentService.java
+private void dispatchAccessGrant(Order order) {
+    try {
+        if (order.getType() == OrderType.SUBSCRIPTION) {
+            subscribeUseCase.handle(order.getMemberId(), order.getId(), order.getFinalAmount());
+            orderCartDeletePort.deleteAllByMemberId(order.getMemberId());
+        } else {
+            for (OrderItem item : order.getItems()) {
+                if (item.getCourseId() != null) {
+                    grantEnrollment(order.getMemberId(), item.getCourseId());
+                }
+            }
+        }
+    } catch (RuntimeException e) {
+        meterRegistry.counter("order.payment.access_grant.failed",
+                "type", order.getType().name()).increment();
+        log.error("[ACCESS_GRANT_FAILED] 결제는 완료됐지만 수강권/구독권 지급 실패 — orderNo: {}, type: {}",
+                order.getOrderNo(), order.getType(), e);
+    }
+}
+```
+
 지급 실패 시 결제를 바로 롤백하지 않은 이유도 있다. PG 승인은 외부 시스템에서 이미 확정된 사실이고, 이를 되돌리려면 결제 취소를 다시 호출해야 한다. 그 취소 역시 실패할 수 있다. 그래서 "과금은 유지하고, 지급은 반드시 맞춘다"는 방향으로 정리했다.
 
 ## 환불도 서버 정책이다
@@ -60,6 +159,29 @@ Redis 락만으로 결제를 완전히 설명하지 않은 이유는 분명하�
 환불 가능 여부를 프론트에서 `refundable=true`로 보여주는 것은 UX일 뿐이다. 사용자는 화면을 오래 열어둘 수 있고, API를 직접 호출할 수도 있다. 따라서 환불 실행 시점에 서버가 다시 판단해야 한다.
 
 강의 환불 조건은 결제 후 7일 이내, 진도율 10% 미만이다. 여기서 10% 이하는 아니고 10% 미만이다. 이 기준은 조회 화면과 실행 API가 같은 `OrderRefundPolicy`를 바라보게 해 판단이 갈라지지 않도록 했다. 실행 경로에서는 주문 항목 단위 Redis 락으로 동시 환불을 직렬화하고, Toss cancel 호출 이후 주문 상태를 `PARTIAL_REFUNDED` 또는 `REFUNDED`로 전이한다.
+
+정책 숫자는 서비스나 컨트롤러에 흩어두지 않고 별도 정책 객체로 뺐다. 조회 화면과 환불 실행 경로가 같은 메서드를 보게 하려는 선택이다.
+
+```java
+// OrderRefundPolicy.java
+public static final int REFUND_WINDOW_DAYS = 7;
+public static final int MAX_REFUNDABLE_PROGRESS_PERCENT = 10;
+
+public static boolean withinRefundWindow(LocalDateTime paidAt, LocalDateTime now) {
+    if (paidAt == null) {
+        return false;
+    }
+    return !now.isAfter(paidAt.plusDays(REFUND_WINDOW_DAYS));
+}
+
+public static boolean progressWithinLimit(int progressPercent) {
+    return progressPercent < MAX_REFUNDABLE_PROGRESS_PERCENT;
+}
+
+public static boolean isCourseItemRefundable(LocalDateTime paidAt, LocalDateTime now, int progressPercent) {
+    return withinRefundWindow(paidAt, now) && progressWithinLimit(progressPercent);
+}
+```
 
 ## 남은 한계
 

@@ -20,6 +20,24 @@ Flown LMS에서 겪은 운영·협업 개선은 한 문장으로 묶을 수 있�
 
 이 경험 이후 마이그레이션은 코드보다 더 조심해야 하는 변경으로 보게 됐다. 애플리케이션 코드는 롤백하거나 다시 배포할 수 있지만, DB 마이그레이션은 이미 운영 데이터와 연결된다. 그래서 버전 순서, 누락 여부, 운영 반영 경로를 배포 전에 확인하는 습관이 필요하다.
 
+운영 설정에서는 Hibernate가 스키마를 자동으로 바꾸지 않게 `ddl-auto: validate`를 두고, 스키마 변경은 Flyway 마이그레이션으로만 가게 했다. 로컬/개발과 운영의 `out-of-order` 정책도 분리했다.
+
+```yaml
+# application.yaml
+spring:
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+    baseline-version: 1
+    # local/dev: true, prod: false
+    out-of-order: false
+```
+
 ## Swagger 500 오류
 
 팀 개발에서 Swagger 문서가 열리지 않는 것은 단순한 불편이 아니다. 프론트엔드가 API 계약을 확인할 수 없으면 병렬 개발이 막힌다.
@@ -28,6 +46,19 @@ Flown LMS에서 겪은 운영·협업 개선은 한 문장으로 묶을 수 있�
 
 여기서 중요한 점은 "문서 페이지 하나 고쳤다"가 아니라, 팀이 API 계약을 확인하는 통로를 다시 열었다는 것이다. 협업 도구도 운영 품질의 일부다.
 
+해결은 빌드 파일에서 충돌 의존성을 명시적으로 제외하는 방식이었다. springdoc이 기대하는 swagger annotation 계열과 다른 버전이 먼저 로드되면 `/v3/api-docs`가 부팅 후에도 500으로 죽을 수 있기 때문이다.
+
+```gradle
+// build.gradle
+implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.16'
+
+// swagger-annotations 제외: springdoc의 swagger-annotations-jakarta와 패키지가 겹쳐
+// 구버전 Schema가 먼저 로드되면 /v3/api-docs가 NoSuchMethodError로 죽는다.
+implementation('com.anthropic:anthropic-java:2.34.0') {
+    exclude group: 'io.swagger.core.v3', module: 'swagger-annotations'
+}
+```
+
 ## Sentry로 오류를 표면화하기
 
 오류를 사람이 로그에서 매번 찾아야 하는 구조는 늦다. 사용자가 신고하거나 누군가 우연히 로그를 보기 전까지 팀은 문제를 모를 수 있다.
@@ -35,6 +66,49 @@ Flown LMS에서 겪은 운영·협업 개선은 한 문장으로 묶을 수 있�
 그래서 Sentry를 붙여 예외가 발생하면 자동으로 표면화되게 했다. 결제 권한 지급 실패를 메트릭으로 드러낸 것과 같은 원칙이다. 실패는 조용히 사라지면 안 된다. 팀이 볼 수 있는 곳으로 올라와야 한다.
 
 물론 알림은 많아질수록 피로해진다. 작은 프로젝트에서는 표면화 자체가 우선이었지만, 규모가 커지면 severity, sampling, ignore rule 같은 노이즈 관리가 필요하다.
+
+Sentry는 단순히 예외를 던지는 것이 아니라, URL에서 도메인을 추론해 태그로 붙였다. 알림을 봤을 때 어느 영역 문제인지 빠르게 좁히기 위한 장치다.
+
+```java
+// GlobalExceptionHandler.java
+@ExceptionHandler(Exception.class)
+public ResponseEntity<ErrorResponse> handleAllException(
+        Exception e,
+        HttpServletRequest request) {
+
+    String path = request.getRequestURI();
+    log.error("[System Error] Path: {}, Message: {}", path, e.getMessage(), e);
+
+    Sentry.configureScope(scope -> {
+        scope.setTag("domain", extractDomain(path));
+        scope.setTag("exceptionType", e.getClass().getSimpleName());
+        scope.setTag("path", path);
+        scope.setTag("method", request.getMethod());
+    });
+    Sentry.captureException(e);
+
+    ErrorResponse response = ErrorResponse.create()
+            .errorCode(ErrorCode.INTERNAL_SERVER_ERROR.getCode())
+            .message(ErrorCode.INTERNAL_SERVER_ERROR.getMessage())
+            .path(path);
+
+    return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
+}
+```
+
+빌드에도 Sentry 플러그인과 프로젝트 이름을 명시해, 배포된 서버에서 발생한 예외가 프로젝트로 모이도록 했다.
+
+```gradle
+// build.gradle
+plugins {
+    id "io.sentry.jvm.gradle" version "6.14.0"
+}
+
+sentry {
+    org = "hard-click"
+    projectName = "java-spring-boot"
+}
+```
 
 ## 진행 상황을 한곳에서 보기
 

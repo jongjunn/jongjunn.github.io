@@ -30,6 +30,58 @@ tags: [동시성, 유니크제약, 격리수준]
 
 여기서 유니크 제약은 단순한 방어선이 아니라 도메인 불변식의 선언이다. 애플리케이션이 실수하거나 여러 요청이 동시에 들어와도 DB가 마지막 경계가 된다.
 
+엔티티에는 이 불변식을 JPA 레벨에서도 드러냈다. 핵심은 `member_id`, `video_id` 조합이 하나만 존재해야 한다는 점이다.
+
+```java
+// VideoProgressJpaEntity.java
+@Entity
+@Table(
+        name = "video_progress",
+        uniqueConstraints = @UniqueConstraint(
+                name = "uk_video_progress_member_video",
+                columnNames = {"member_id", "video_id"}
+        )
+)
+public class VideoProgressJpaEntity {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "progress_id")
+    private Long id;
+
+    @Column(name = "member_id", nullable = false)
+    private Long memberId;
+
+    @Column(name = "video_id", nullable = false)
+    private Long videoId;
+}
+```
+
+이미 깨진 데이터가 있었기 때문에 마이그레이션은 제약 추가만으로 끝나지 않았다. 먼저 중복행을 정리하고, 조합당 가장 많이 진행된 행을 남긴 뒤 제약을 추가했다.
+
+```sql
+-- V3.5.5__dedupe_and_unique_video_progress.sql
+DELETE FROM video_progress
+WHERE progress_id IN (
+    SELECT progress_id
+    FROM (
+        SELECT progress_id,
+               ROW_NUMBER() OVER (
+                   PARTITION BY member_id, video_id
+                   ORDER BY is_completed DESC,
+                            watch_time_sec DESC,
+                            last_position_sec DESC,
+                            progress_id DESC
+               ) AS rn
+        FROM video_progress
+    ) ranked
+    WHERE ranked.rn > 1
+);
+
+ALTER TABLE video_progress
+    ADD CONSTRAINT uk_video_progress_member_video UNIQUE (member_id, video_id),
+    ALGORITHM = INPLACE, LOCK = NONE;
+```
+
 ## REPEATABLE READ와 REQUIRES_NEW
 
 유니크 위반을 잡은 뒤 "먼저 커밋된 행을 읽어 갱신하면 되겠다"고 생각했지만, 여기서 트랜잭션 격리수준을 만났다.
@@ -37,6 +89,71 @@ tags: [동시성, 유니크제약, 격리수준]
 MySQL 기본 격리수준인 `REPEATABLE READ`에서는 트랜잭션의 스냅샷이 첫 조회 시점에 고정된다. 내가 처음 조회했을 때 행이 없었다면, 다른 트랜잭션이 그 뒤에 INSERT 후 커밋해도 같은 트랜잭션 안에서는 그 행이 보이지 않을 수 있다.
 
 그래서 복구 읽기는 `REQUIRES_NEW`로 분리했다. 새 트랜잭션에서 새 스냅샷을 얻어, 방금 커밋된 행을 다시 읽고 업데이트할 수 있게 했다. 격리수준은 시험용 정의가 아니라, 복구 코드에서 실제로 결과를 바꾸는 조건이었다.
+
+코드에서는 INSERT를 별도 트랜잭션으로 분리하고, 유니크 경합에서 밀린 요청이 새 트랜잭션으로 기존 행을 읽어 갱신하게 했다.
+
+```java
+// VideoProgressInserter.java
+@Transactional(propagation = Propagation.REQUIRES_NEW)
+public VideoProgressJpaEntity insert(VideoProgressJpaEntity entity) {
+    return repository.saveAndFlush(entity);
+}
+
+@Transactional(propagation = Propagation.REQUIRES_NEW)
+public Optional<VideoProgressJpaEntity> updateExisting(
+        Long memberId,
+        Long videoId,
+        Integer lastPositionSec,
+        Integer watchTimeSec,
+        Boolean completed,
+        LocalDateTime completedAt,
+        LocalDateTime updatedAt
+) {
+    return repository.findByMemberIdAndVideoId(memberId, videoId)
+            .map(entity -> {
+                entity.updateProgress(lastPositionSec, watchTimeSec, completed, completedAt, updatedAt);
+                return repository.saveAndFlush(entity);
+            });
+}
+```
+
+호출부는 아무 `DataIntegrityViolationException`이나 복구하지 않는다. 제약 이름을 확인해서 `(member_id, video_id)` 유니크 경합일 때만 멱등 복구로 해석한다. NOT NULL, FK 같은 다른 위반까지 덮어쓰면 진짜 오류를 숨길 수 있기 때문이다.
+
+```java
+// VideoProgressRepositoryAdapter.java
+private static final String MEMBER_VIDEO_UNIQUE_CONSTRAINT = "uk_video_progress_member_video";
+
+private VideoProgress insert(VideoProgress progress, LocalDateTime now) {
+    try {
+        return toDomain(inserter.insert(new VideoProgressJpaEntity(
+                progress.memberId(),
+                progress.courseId(),
+                progress.videoId(),
+                progress.lastPositionSec(),
+                progress.watchTimeSec(),
+                progress.completed(),
+                progress.completedAt(),
+                now
+        )));
+    } catch (DataIntegrityViolationException violation) {
+        if (!isMemberVideoUniqueViolation(violation)) {
+            throw violation;
+        }
+
+        return inserter.updateExisting(
+                        progress.memberId(),
+                        progress.videoId(),
+                        progress.lastPositionSec(),
+                        progress.watchTimeSec(),
+                        progress.completed(),
+                        progress.completedAt(),
+                        now
+                )
+                .map(this::toDomain)
+                .orElseThrow(() -> violation);
+    }
+}
+```
 
 ## 수강 최초 등록의 멱등 성공
 
