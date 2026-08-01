@@ -29,4 +29,4 @@ Flown LMS는 온라인 강의 수강, 결제, 학습 관리, 복습 스케줄을
 - [조회 후 없으면 INSERT는 왜 깨지는가: 유니크 제약과 멱등 처리]({% post_url 2026-08-01-concurrency-db %})
 - [CRUD가 아닌 백엔드: 학습 스케줄을 CP-SAT 제약 최적화로 짠 이유]({% post_url 2026-08-01-ai-data-integration %})
 - [협업을 도구가 아니라 계약으로 만들기: API, DB, 오류 공유 기준]({% post_url 2026-08-01-ops-collaboration-quality %})
-- [게시글 목록 병목 줄이기: 인덱스, N+1 제거, 댓글 수 캐시]({% post_url 2026-08-01-community-performance %})
+- [게시글 목록 병목 줄이기: 인덱스, N+1 제거, COUNT 줄이기]({% post_url 2026-08-01-community-performance %})
