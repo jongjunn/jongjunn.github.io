@@ -1,0 +1,25 @@
+---
+layout: default
+---
+<section class="hero glass">
+  <h1>{{ site.title }}</h1>
+  <p>{{ site.description }}</p>
+  {{ content }}
+</section>
+
+<ul class="post-list">
+  {% for post in site.posts %}
+  <li>
+    <a class="card glass" href="{{ post.url | relative_url }}">
+      <div class="cats">
+        {% for c in post.categories %}<span class="tag">{{ c }}</span>{% endfor %}
+      </div>
+      <h2>{{ post.title }}</h2>
+      <div class="meta">
+        <time>{{ post.date | date: "%Y.%m.%d" }}</time>
+        {% if post.tags %}<span class="dot">·</span><span class="tags">{{ post.tags | join: " · " }}</span>{% endif %}
+      </div>
+    </a>
+  </li>
+  {% endfor %}
+</ul>

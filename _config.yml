@@ -5,12 +5,6 @@ author:
 email: jongjunny2001@gmail.com
 baseurl: ""
 url: "https://jongjunn.github.io"
-theme: minima
-minima:
-  social_links:
-    github: jongjunn
 plugins:
   - jekyll-feed
   - jekyll-seo-tag
-header_pages:
-  - about.md

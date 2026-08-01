@@ -1,0 +1,17 @@
+---
+layout: default
+---
+<article class="post glass">
+  <div class="cats">
+    {% for c in page.categories %}<span class="tag">{{ c }}</span>{% endfor %}
+  </div>
+  <h1 class="post-title">{{ page.title }}</h1>
+  <div class="meta">
+    <time>{{ page.date | date: "%Y.%m.%d" }}</time>
+    {% if page.tags %}<span class="dot">·</span><span class="tags">{{ page.tags | join: " · " }}</span>{% endif %}
+  </div>
+  <div class="content">
+    {{ content }}
+  </div>
+  <a class="back" href="{{ '/' | relative_url }}">← 목록으로</a>
+</article>
