@@ -32,6 +32,8 @@ tags: [동시성, 유니크제약, 격리수준]
 
 엔티티에는 이 불변식을 JPA 레벨에서도 드러냈다. 핵심은 `member_id`, `video_id` 조합이 하나만 존재해야 한다는 점이다.
 
+원본 코드: [VideoProgressJpaEntity.java:16-40](https://github.com/Hard-Click/Hard-Click-BackEnd/blob/ea50993a49340ee2bce8b53b439211c541c4da81/src/main/java/com/wanted/backend/domain/learning_activity/infrastructure/persistence/VideoProgressJpaEntity.java#L16-L40)
+
 ```java
 // VideoProgressJpaEntity.java
 @Entity
@@ -57,6 +59,8 @@ public class VideoProgressJpaEntity {
 ```
 
 이미 깨진 데이터가 있었기 때문에 마이그레이션은 제약 추가만으로 끝나지 않았다. 먼저 중복행을 정리하고, 조합당 가장 많이 진행된 행을 남긴 뒤 제약을 추가했다.
+
+원본 코드: [V3.5.5__dedupe_and_unique_video_progress.sql:1-30](https://github.com/Hard-Click/Hard-Click-BackEnd/blob/ea50993a49340ee2bce8b53b439211c541c4da81/src/main/resources/db/migration/V3.5.5__dedupe_and_unique_video_progress.sql#L1-L30)
 
 ```sql
 -- V3.5.5__dedupe_and_unique_video_progress.sql
@@ -92,6 +96,8 @@ MySQL 기본 격리수준인 `REPEATABLE READ`에서는 트랜잭션의 스냅�
 
 코드에서는 INSERT를 별도 트랜잭션으로 분리하고, 유니크 경합에서 밀린 요청이 새 트랜잭션으로 기존 행을 읽어 갱신하게 했다.
 
+원본 코드: [VideoProgressInserter.java:27-58](https://github.com/Hard-Click/Hard-Click-BackEnd/blob/ea50993a49340ee2bce8b53b439211c541c4da81/src/main/java/com/wanted/backend/domain/learning_activity/infrastructure/persistence/VideoProgressInserter.java#L27-L58)
+
 ```java
 // VideoProgressInserter.java
 @Transactional(propagation = Propagation.REQUIRES_NEW)
@@ -118,6 +124,8 @@ public Optional<VideoProgressJpaEntity> updateExisting(
 ```
 
 호출부는 아무 `DataIntegrityViolationException`이나 복구하지 않는다. 제약 이름을 확인해서 `(member_id, video_id)` 유니크 경합일 때만 멱등 복구로 해석한다. NOT NULL, FK 같은 다른 위반까지 덮어쓰면 진짜 오류를 숨길 수 있기 때문이다.
+
+원본 코드: [VideoProgressRepositoryAdapter.java:21-115](https://github.com/Hard-Click/Hard-Click-BackEnd/blob/ea50993a49340ee2bce8b53b439211c541c4da81/src/main/java/com/wanted/backend/domain/learning_activity/infrastructure/persistence/VideoProgressRepositoryAdapter.java#L21-L115)
 
 ```java
 // VideoProgressRepositoryAdapter.java

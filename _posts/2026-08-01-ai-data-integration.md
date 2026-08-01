@@ -78,6 +78,8 @@ def generate_weekly_schedule(lessons, weekly_caps, prerequisites=None):
 
 FSRS 쪽도 직접 알고리즘을 구현한 것이 아니라, 퀴즈 점수를 `Rating`으로 매핑하고 라이브러리의 `review_card`에 연결했다. 이 부분을 글에 명확히 남기는 이유는 과장하지 않기 위해서다.
 
+관련 코드: [FSRS 테이블 마이그레이션](https://github.com/Hard-Click/Hard-Click-BackEnd/blob/ea50993a49340ee2bce8b53b439211c541c4da81/src/main/resources/db/migration/V3.1.4__add_fsrs_review_tables.sql#L1-L53), [ReviewCompletionAdapter.java:14-90](https://github.com/Hard-Click/Hard-Click-BackEnd/blob/ea50993a49340ee2bce8b53b439211c541c4da81/src/main/java/com/wanted/backend/domain/quiz/infrastructure/review/ReviewCompletionAdapter.java#L14-L90)
+
 ```python
 # domain/review.py
 from fsrs import Scheduler, Card, Rating
@@ -167,6 +169,8 @@ AI 스케줄 생성은 느리고 실패할 수 있다. CP-SAT 최적화는 수 �
 
 Java 백엔드에서는 수강 시작 이벤트를 커밋 이후에만 받아 Python 서버를 호출한다. 실패해도 수강 신청 결과를 되돌리지 않고 로그만 남긴다.
 
+원본 코드: [ScheduleGenerationListener.java:20-34](https://github.com/Hard-Click/Hard-Click-BackEnd/blob/ea50993a49340ee2bce8b53b439211c541c4da81/src/main/java/com/wanted/backend/domain/enrollment_management/application/listener/ScheduleGenerationListener.java#L20-L34)
+
 ```java
 // ScheduleGenerationListener.java
 @Async("schedulerAiExecutor")
@@ -182,6 +186,8 @@ public void onEnrollmentStarted(EnrollmentStartedEvent event) {
 ```
 
 Python 서버 호출 어댑터는 timeout을 명시하고, `schedule.ai.enabled=false`일 때는 즉시 생성을 건너뛴다. 운영에서 기능을 끄더라도 주간 배치가 백업 경로가 된다.
+
+원본 코드: [ScheduleGenerationAiAdapter.java:22-60](https://github.com/Hard-Click/Hard-Click-BackEnd/blob/ea50993a49340ee2bce8b53b439211c541c4da81/src/main/java/com/wanted/backend/domain/enrollment_management/infrastructure/ai/ScheduleGenerationAiAdapter.java#L22-L60)
 
 ```java
 // ScheduleGenerationAiAdapter.java
@@ -200,6 +206,8 @@ public void requestGeneration(Long memberId) {
 ```
 
 전용 executor의 포화 정책은 이 글에서 가장 중요한 결정 중 하나였다. `CallerRunsPolicy`를 쓰면 수강 요청 스레드가 긴 Python 호출을 직접 떠안을 수 있기 때문이다.
+
+원본 코드: [AsyncConfig.java:61-80](https://github.com/Hard-Click/Hard-Click-BackEnd/blob/ea50993a49340ee2bce8b53b439211c541c4da81/src/main/java/com/wanted/backend/global/config/AsyncConfig.java#L61-L80)
 
 ```java
 // AsyncConfig.java

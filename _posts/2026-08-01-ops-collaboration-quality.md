@@ -67,6 +67,8 @@ tags: [API계약, SLO, Flyway, Alertmanager, Sentry]
 
 그래서 PR 템플릿에 프론트엔드 연동 정보를 직접 쓰도록 만들었다. 핵심은 "무엇을 만들었다"보다 "프론트가 무엇을 믿고 호출하면 되는가"를 남기는 것이다.
 
+원본 문서: [.github/pull_request_template.md:14-45](https://github.com/Hard-Click/Hard-Click-BackEnd/blob/ea50993a49340ee2bce8b53b439211c541c4da81/.github/pull_request_template.md#L14-L45)
+
 ````markdown
 ## 프론트엔드 연동 가이드 (API 명세)
 
@@ -95,6 +97,8 @@ tags: [API계약, SLO, Flyway, Alertmanager, Sentry]
 
 하지만 이것만으로는 충분하지 않다. 템플릿은 작성 누락을 줄일 뿐, 실제 API와 문서가 일치하는지 자동으로 보장하지는 않는다. 그래서 팀 API 표에는 단순 URL만 두지 않고, 아래 항목을 같이 관리했다.
 
+관련 문서: [SCHEDULE_API.md:1-21](https://github.com/Hard-Click/Hard-Click-BackEnd/blob/ea50993a49340ee2bce8b53b439211c541c4da81/docs/SCHEDULE_API.md#L1-L21), [ONBOARDING_API.md](https://github.com/Hard-Click/Hard-Click-BackEnd/blob/ea50993a49340ee2bce8b53b439211c541c4da81/docs/ONBOARDING_API.md)
+
 ```text
 API명칭 / METHOD / URL / 권한 / 개발 상황 / 작성완료
 DB 변경 / 캐싱 / 이벤트/SSE / 기술 메모 / 운영 메모
@@ -121,6 +125,8 @@ DB 변경 / 캐싱 / 이벤트/SSE / 기술 메모 / 운영 메모
 
 팀 GitHub 매뉴얼도 단순 사용법보다 작업 로그 관점에서 쓸 만했다. 기본 흐름은 이렇게 잡았다.
 
+원본 문서: [docs/WORKFLOW.md:5-24](https://github.com/Hard-Click/Hard-Click-BackEnd/blob/ea50993a49340ee2bce8b53b439211c541c4da81/docs/WORKFLOW.md#L5-L24)
+
 ```text
 Issue 생성
 -> 담당자 지정
@@ -142,6 +148,8 @@ Issue 생성
 
 원인은 의존성 충돌이었다. `anthropic-java`가 끌고 온 `swagger-annotations`가 springdoc이 기대하는 annotation 계열과 충돌했다. 그래서 빌드 파일에서 충돌 의존성을 명시적으로 제외했다.
 
+원본 코드: [build.gradle:39-73](https://github.com/Hard-Click/Hard-Click-BackEnd/blob/ea50993a49340ee2bce8b53b439211c541c4da81/build.gradle#L39-L73)
+
 ```gradle
 implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.16'
 
@@ -160,6 +168,8 @@ DB 변경은 백엔드 내부 작업처럼 보이지만, 실제로는 팀 전체
 
 기본 설정은 Hibernate가 스키마를 자동으로 바꾸지 않고, Flyway가 적용한 스키마와 엔티티가 맞는지 검증하게 했다.
 
+원본 코드: [application.yaml:34-58](https://github.com/Hard-Click/Hard-Click-BackEnd/blob/ea50993a49340ee2bce8b53b439211c541c4da81/src/main/resources/application.yaml#L34-L58)
+
 ```yaml
 spring:
   jpa:
@@ -175,6 +185,8 @@ spring:
 ```
 
 팀 문서에는 DB 구조 변경 절차도 따로 뒀다. 순서는 단순했다.
+
+원본 문서: [docs/DB_MIGRATION_RULES.md:8-52](https://github.com/Hard-Click/Hard-Click-BackEnd/blob/ea50993a49340ee2bce8b53b439211c541c4da81/docs/DB_MIGRATION_RULES.md#L8-L52), [docs/DEV_RULES.md:7-15](https://github.com/Hard-Click/Hard-Click-BackEnd/blob/ea50993a49340ee2bce8b53b439211c541c4da81/docs/DEV_RULES.md#L7-L15)
 
 ```text
 Entity 수정
@@ -193,6 +205,8 @@ Entity 수정
 
 그래서 운영 프로필에는 장애 복구 관점에서 `out-of-order=true`를 둔 상태였다.
 
+원본 코드: [application-prod.yaml:10-17](https://github.com/Hard-Click/Hard-Click-BackEnd/blob/ea50993a49340ee2bce8b53b439211c541c4da81/src/main/resources/application-prod.yaml#L10-L17)
+
 ```yaml
 # application-prod.yaml
 spring:
@@ -206,6 +220,8 @@ spring:
 이 선택은 이상적인 정답이라기보다 당시 팀 구조를 반영한 완충장치에 가깝다. 장기적으로는 마이그레이션 번호 정책을 단일화하거나, 도메인별 버전 레인을 명확히 나누고 머지 전에 검증하는 쪽이 더 낫다.
 
 그래서 PR CI에 스키마 드리프트 게이트를 추가했다. 임시 MySQL에 Flyway 마이그레이션을 적용한 뒤, Hibernate `validate`로 애플리케이션을 실제 부팅해 본다.
+
+원본 코드: [.github/workflows/pr-ci.yml:117-155](https://github.com/Hard-Click/Hard-Click-BackEnd/blob/ea50993a49340ee2bce8b53b439211c541c4da81/.github/workflows/pr-ci.yml#L117-L155)
 
 ```yaml
 - name: 스키마 드리프트 게이트
@@ -247,6 +263,8 @@ spring:
 운영 중 500 오류가 발생했을 때 "서버 터졌어요"만 공유되면 조사가 늦어진다. 어떤 도메인에서, 어떤 URL에서, 어떤 예외 타입으로 터졌는지 알림에 같이 붙어야 담당자를 빠르게 좁힐 수 있다.
 
 그래서 전역 예외 처리에서 예상하지 못한 500 오류를 Sentry로 보낼 때 도메인, URL, HTTP method, 예외 타입을 태그로 남겼다.
+
+원본 코드: [GlobalExceptionHandler.java:268-300](https://github.com/Hard-Click/Hard-Click-BackEnd/blob/ea50993a49340ee2bce8b53b439211c541c4da81/src/main/java/com/wanted/backend/global/exception/GlobalExceptionHandler.java#L268-L300)
 
 ```java
 @ExceptionHandler(Exception.class)
@@ -291,7 +309,9 @@ Spring Boot Micrometer
 -> Slack
 ```
 
-Spring Boot는 counter와 timer를 쌓는 데 집중한다. 알림 조건 평가는 Prometheus alert rule이 맡고, 묶기, 반복 알림, Slack 채널 선택은 Alertmanager가 맡는다. 모든 alert rule에는 `domain`과 `env` 레이블을 붙여 운영에서는 도메인별 채널로, 테스트나 시연 환경에서는 통합 채널로 보낼 수 있게 했다.
+Spring Boot는 counter와 timer를 쌓는 데 집중한다. 알림 조건 평가는 Prometheus alert rule이 맡고, 묶기, 반복 알림, Slack 채널 선택은 Alertmanager가 맡는다. alert rule에는 `domain` 레이블을 붙이고, Prometheus `external_labels`로 `env`를 붙여 운영에서는 도메인별 채널로, 테스트나 시연 환경에서는 통합 채널로 보낼 수 있게 했다.
+
+원본 코드: [monitoring/alert-rules/payment.yml:26-36](https://github.com/Hard-Click/Hard-Click-BackEnd/blob/ea50993a49340ee2bce8b53b439211c541c4da81/monitoring/alert-rules/payment.yml#L26-L36), [monitoring/prometheus.yml:1-8](https://github.com/Hard-Click/Hard-Click-BackEnd/blob/ea50993a49340ee2bce8b53b439211c541c4da81/monitoring/prometheus.yml#L1-L8)
 
 ```yaml
 - alert: PaymentLatencyP95High

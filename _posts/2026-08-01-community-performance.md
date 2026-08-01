@@ -85,24 +85,20 @@ k6 P95 / 실패율
 
 게시글 목록은 보통 게시판 종류, 공개 상태, 생성일 기준으로 조회된다. 그래서 `posts` 테이블에는 목록 조회에 맞춘 복합 인덱스를 뒀다.
 
+원본 코드: [PostJpaEntity.java:10-51](https://github.com/Hard-Click/Hard-Click-BackEnd/blob/ea50993a49340ee2bce8b53b439211c541c4da81/src/main/java/com/wanted/backend/domain/community/infrastructure/persistence/PostJpaEntity.java#L10-L51)
+
 ```java
 // PostJpaEntity.java
 @Table(
         name = "posts",
         indexes = {
-                @Index(
-                        name = "idx_posts_board_status_created",
-                        columnList = "board_type,status,created_at"
-                ),
-                @Index(
-                        name = "idx_posts_board_status_count",
-                        columnList = "board_type,status,comment_count"
-                )
+                @Index(name = "idx_posts_board_status_created", columnList = "board_type, status, created_at"),
+                @Index(name = "idx_posts_board_status_count", columnList = "board_type, status, comment_count")
         }
 )
 public class PostJpaEntity {
     @Column(name = "comment_count", nullable = false)
-    private Integer commentCount = 0;
+    private int commentCount;
 }
 ```
 
@@ -116,48 +112,36 @@ public class PostJpaEntity {
 
 그래서 게시글 목록을 먼저 가져오고, 필요한 작성자 id와 게시글 id를 모아 한 번씩 배치 조회했다.
 
+원본 코드: [PostQueryService.java:109-124](https://github.com/Hard-Click/Hard-Click-BackEnd/blob/ea50993a49340ee2bce8b53b439211c541c4da81/src/main/java/com/wanted/backend/domain/community/application/service/PostQueryService.java#L109-L124)
+
 ```java
 // PostQueryService.java
-private PageResult<PostListItem> getListByBatchIn(
-        BoardType boardType,
-        int page,
-        int size,
-        String keyword
-) {
-    Page<Post> postPage = postReaderPort.getList(boardType, page, size, keyword);
-    List<Post> posts = postPage.getContent();
+private List<PostItemResult> getListByBatchIn(BoardType boardType, PostSortType sort,
+                                               String keyword, int page, int size, boolean isAdmin) {
+    List<Post> posts = boardType != null
+            ? postRepository.findByBoardType(boardType, sort, keyword, page, size)
+            : postRepository.findAll(sort, keyword, page, size);
 
-    List<Long> authorIds = posts.stream()
-            .map(Post::getAuthorId)
-            .distinct()
+    Set<Long> authorIds = posts.stream().map(Post::getAuthorId).collect(Collectors.toSet());
+    Map<Long, String> nameMap = memberNamePort.getNamesByMemberIds(authorIds);
+
+    List<Long> postIds = posts.stream().map(Post::getId).toList();
+    Map<Long, Long> commentCountMap = commentRepository.countsByPostIds(postIds);
+
+    return posts.stream()
+            .map(post -> toItemResult(post, isAdmin, nameMap, commentCountMap))
             .toList();
-
-    List<Long> postIds = posts.stream()
-            .map(Post::getId)
-            .toList();
-
-    Map<Long, String> authorNames = memberNamePort.getNamesByMemberIds(authorIds);
-    Map<Long, Long> commentCounts = commentRepository.countsByPostIds(postIds);
-
-    List<PostListItem> items = posts.stream()
-            .map(post -> toListItem(post, authorNames, commentCounts))
-            .toList();
-
-    return PageResult.of(items, postPage.getNumber(), postPage.getSize(), postPage.getTotalElements());
 }
 ```
 
 댓글 수는 게시글 id 목록을 `IN` 조건으로 넘겨 한 번에 묶었다.
 
+원본 코드: [SpringDataCommentRepository.java:29-31](https://github.com/Hard-Click/Hard-Click-BackEnd/blob/ea50993a49340ee2bce8b53b439211c541c4da81/src/main/java/com/wanted/backend/domain/community/infrastructure/persistence/SpringDataCommentRepository.java#L29-L31)
+
 ```java
 // SpringDataCommentRepository.java
-@Query("""
-        SELECT c.postId AS postId, COUNT(c) AS cnt
-        FROM CommentJpaEntity c
-        WHERE c.postId IN :postIds
-        GROUP BY c.postId
-        """)
-List<CommentCountRow> countByPostIdIn(@Param("postIds") Collection<Long> postIds);
+@Query("SELECT c.postId AS postId, COUNT(c) AS cnt FROM CommentJpaEntity c WHERE c.postId IN :postIds GROUP BY c.postId")
+List<CommentCountRow> countsByPostIds(@Param("postIds") Collection<Long> postIds);
 ```
 
 이렇게 바꾸면 게시글 개수가 늘어나도 작성자 조회와 댓글 수 조회가 게시글 수만큼 늘지 않는다. 목록 API에서 가장 먼저 잡아야 할 것은 "한 화면을 만들기 위해 쿼리가 몇 번 나가는가"였다.
@@ -172,42 +156,38 @@ List<CommentCountRow> countByPostIdIn(@Param("postIds") Collection<Long> postIds
 
 처음에는 JOIN + DTO projection 방식으로 필요한 필드만 조회했다. 이 방식은 쿼리 수를 줄이는 데는 효과가 있었다. 하지만 부하 테스트에서는 댓글순 정렬이 여전히 P95 7~9초대로 남았다. Datadog에서도 요청 526ms 중 JOIN 쿼리만 508ms를 차지하는 trace가 보였다. 즉 병목은 "쿼리 개수"에서 "집계와 정렬 비용"으로 옮겨간 상태였다.
 
+원본 코드: [PostRepositoryAdapter.java:110-130](https://github.com/Hard-Click/Hard-Click-BackEnd/blob/ea50993a49340ee2bce8b53b439211c541c4da81/src/main/java/com/wanted/backend/domain/community/infrastructure/persistence/PostRepositoryAdapter.java#L110-L130)
+
 ```java
 // PostRepositoryAdapter.java
-@Query("""
-        SELECT new com.wanted.backend.domain.community.application.dto.PostSummaryDto(
-            p.id, p.authorId, m.nickname, p.boardType, p.title,
-            p.content, p.status, p.createdAt, p.updatedAt, COUNT(c.id)
+return em.createQuery("""
+        SELECT new com.wanted.backend.domain.community.domain.model.PostSummary(
+            p.id, p.boardType, p.subject, p.title, m.name, p.createdAt, p.viewCount, COUNT(c.id), p.isAccepted
         )
         FROM PostJpaEntity p
-        JOIN MemberReferenceEntity m ON m.memberId = p.authorId
+        JOIN MemberReferenceEntity m ON m.id = p.authorId
         LEFT JOIN CommentJpaEntity c ON c.postId = p.id
-        WHERE p.boardType = :boardType AND p.status = :status
-        GROUP BY p.id, p.authorId, m.nickname, p.boardType, p.title,
-                 p.content, p.status, p.createdAt, p.updatedAt
-        ORDER BY COUNT(c.id) DESC, p.createdAt DESC
-        """)
-Page<PostSummaryDto> findSummaryByBoardTypeOrderByCommentCount(...);
+        WHERE p.boardType = :boardType AND p.title LIKE :keyword AND p.status = :status
+        GROUP BY p.id, p.boardType, p.subject, p.title, m.name, p.createdAt, p.viewCount, p.isAccepted
+        ORDER BY COUNT(c.id) DESC
+        """, PostSummary.class)
+        .setFirstResult(page * size)
+        .setMaxResults(size)
+        .getResultList();
 ```
 
 이후에는 댓글 수를 게시글에 `comment_count`로 들고 가는 방식까지 적용했다. 댓글 생성/삭제 시 게시글의 댓글 수를 같이 갱신하고, 목록에서는 그 값을 기준으로 정렬한다.
 
+원본 코드: [SpringDataPostRepository.java:42-49](https://github.com/Hard-Click/Hard-Click-BackEnd/blob/ea50993a49340ee2bce8b53b439211c541c4da81/src/main/java/com/wanted/backend/domain/community/infrastructure/persistence/SpringDataPostRepository.java#L42-L49)
+
 ```java
 // SpringDataPostRepository.java
-@Modifying(clearAutomatically = true)
-@Query("""
-        UPDATE PostJpaEntity p
-        SET p.commentCount = p.commentCount + 1
-        WHERE p.id = :postId
-        """)
+@Modifying
+@Query("UPDATE PostJpaEntity p SET p.commentCount = p.commentCount + 1 WHERE p.id = :postId")
 void incrementCommentCount(@Param("postId") Long postId);
 
-@Modifying(clearAutomatically = true)
-@Query("""
-        UPDATE PostJpaEntity p
-        SET p.commentCount = p.commentCount - 1
-        WHERE p.id = :postId AND p.commentCount > 0
-        """)
+@Modifying
+@Query("UPDATE PostJpaEntity p SET p.commentCount = p.commentCount - 1 WHERE p.id = :postId AND p.commentCount > 0")
 void decrementCommentCount(@Param("postId") Long postId);
 ```
 
@@ -217,23 +197,29 @@ void decrementCommentCount(@Param("postId") Long postId);
 
 마지막으로 반복 호출되는 전체 게시글 수 조회를 Redis 캐시에 올렸다. 여기서는 검색어가 없는 기본 목록만 캐시하고, 검색어가 있는 경우는 캐시하지 않았다. 키 종류가 너무 늘어나면 캐시 관리 비용이 더 커질 수 있기 때문이다.
 
+원본 코드: [PostCountCache.java:11-58](https://github.com/Hard-Click/Hard-Click-BackEnd/blob/ea50993a49340ee2bce8b53b439211c541c4da81/src/main/java/com/wanted/backend/domain/community/infrastructure/cache/PostCountCache.java#L11-L58)
+
 ```java
 // PostCountCache.java
-public Long count(BoardType boardType, String keyword) {
-    if (hasText(keyword)) {
-        return repository.count(boardType, keyword);
+public int count(BoardType boardType, String keyword) {
+    boolean cacheable = keyword == null || keyword.isBlank();
+    if (!cacheable) {
+        return load(boardType, keyword);
     }
 
-    Cache.ValueWrapper cached = cache.get(cacheKey(boardType));
-    if (cached != null && cached.get() instanceof Long value) {
-        hitCounter.increment();
-        return value;
+    Cache cache = cacheManager.getCache(CACHE_NAME);
+    String key = boardType != null ? boardType.name() : "ALL";
+
+    Integer cached = cache.get(key, Integer.class);
+    if (cached != null) {
+        cacheHits.increment();
+        return cached;
     }
 
-    missCounter.increment();
-    Long count = repository.count(boardType, null);
-    cache.put(cacheKey(boardType), count);
-    return count;
+    cacheMisses.increment();
+    int value = load(boardType, keyword);
+    cache.put(key, value);
+    return value;
 }
 ```
 
