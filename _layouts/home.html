@@ -8,6 +8,49 @@ layout: default
   <div class="hero-body">{{ content }}</div>
 </section>
 
+<section class="series" aria-labelledby="series-title">
+  <div class="section-head">
+    <span class="section-kicker">Recommended Flow</span>
+    <h2 id="series-title">읽는 순서</h2>
+    <p>글을 한꺼번에 나열하기보다, 보여주고 싶은 역량이 드러나는 흐름으로 다시 묶었습니다.</p>
+  </div>
+
+  <div class="series-grid">
+    {% for series in site.data.series %}
+    <section class="series-card">
+      <div class="series-top">
+        <span class="series-label">{{ series.label }}</span>
+        <h3>{{ series.title }}</h3>
+        <p>{{ series.summary }}</p>
+      </div>
+      <ol class="series-posts">
+        {% for slug in series.posts %}
+          {% assign linked_post = site.posts | where: "slug", slug | first %}
+          {% if linked_post %}
+          <li>
+            <a href="{{ linked_post.url | relative_url }}">
+              <span class="step">{{ forloop.index }}</span>
+              <span class="series-post-copy">
+                <strong>{{ linked_post.title }}</strong>
+                {% if linked_post.tags %}<small>{{ linked_post.tags | join: " · " }}</small>{% endif %}
+              </span>
+            </a>
+          </li>
+          {% endif %}
+        {% endfor %}
+      </ol>
+      <p class="series-takeaway">{{ series.takeaway }}</p>
+    </section>
+    {% endfor %}
+  </div>
+</section>
+
+<section class="all-posts" aria-labelledby="all-posts-title">
+<div class="section-head compact">
+  <span class="section-kicker">All Posts</span>
+  <h2 id="all-posts-title">전체 글</h2>
+</div>
+
 <div class="filter" role="tablist" aria-label="카테고리 필터">
   <button class="chip is-active" data-filter="all" role="tab" aria-selected="true">전체</button>
   {% for cat in site.categories %}
@@ -34,6 +77,7 @@ layout: default
 </ul>
 
 <p class="empty" hidden>해당 카테고리 글이 아직 없어요.</p>
+</section>
 
 <script>
 (function () {

@@ -7,8 +7,6 @@ tags: [멱등성, Redis, SETNX, 동시성]
 ---
 
 
-작성일: 2026-07-31
-
 ## 먼저 정정한 것
 
 초기 정리에서는 현재 `/api/payments/confirm` 경로와 구형 `PaymentFacade` 경로가 섞여 있었다. 구형 `PaymentFacade`에는 Redis 결과 캐시, DB 멱등키, Redis 락이 함께 있었지만, 현재 주문 결제 경로는 `PaymentConfirmController`에서 `ConfirmOrderPaymentUseCase`로 들어가고 `ConfirmOrderPaymentService`가 처리한다.
@@ -388,13 +386,13 @@ private void dispatchAccessGrant(Order order) {
 - 같은 멱등키의 응답 본문을 완전히 동일하게 재현하는 결과 캐시는 현재 `/confirm` 경로에 없다.
 - PG 성공 후 DB 실패를 자동 복구하는 보정 worker는 아직 별도 구현이 필요하다.
 
-## 채용 관점에서 강조하고 싶은 점
+## 이 사례에서 남긴 것
 
 이 작업에서 가장 중요하게 둔 태도는 "틀린 설명을 바로잡는 것"이었다. 처음에는 현재 `/confirm` 경로와 구형 `PaymentFacade`의 결과 캐시 구조를 섞어 설명했지만, 코드를 다시 따라가며 현재 경로에 결과 캐시가 없다는 사실을 분리했다. 결제 도메인에서는 그럴듯한 과장보다 정확한 경계가 더 중요하다고 봤다.
 
 팀 관점에서는 재시도 UX, 중복 과금 방어, 보정 가능성을 한 문서 안에서 같이 설명하려 했다. 개발자에게는 Redis 락과 DB 상태 재조회가 어떤 순서로 동작하는지, 인사 담당자에게는 돈이 걸린 기능을 다룰 때 어떤 책임감을 갖고 판단하는지가 읽히도록 정리했다.
 
-## 면접 예상질문
+## 다시 설명해볼 질문
 
 1. Redis 락만으로 중복 결제를 완전히 막을 수 없다고 보는 이유는 무엇인가?
 2. 왜 락 획득 후 주문 상태를 다시 조회해야 하는가?

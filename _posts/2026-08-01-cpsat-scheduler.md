@@ -94,7 +94,7 @@ if status not in (cp_model.OPTIMAL, cp_model.FEASIBLE):
 - FSRS는 **직접 구현한 알고리즘이 아니라 라이브러리 사용**이다. 내가 한 건 퀴즈 점수를 Rating으로 매핑하고 도메인에 배선한 부분이다.
 - 이탈위험 점수(`risk.py`)는 rule-based이며 CoxPH 같은 예측 모델이 아니다. 이 글에서 다루지 않는다.
 
-## 7. 채용 관점에서 강조하고 싶은 점
+## 7. 이 사례에서 남긴 것
 
 이 글은 "AI를 했다"는 포장보다, 복잡한 요구사항을 제약 모델로 바꾸는 문제 분해 능력을 보여주기 위한 글이다. 조건이 늘어날수록 if 분기보다 결정변수·hard constraint·soft objective로 나누는 편이 유지보수 가능하다고 판단했다.
 
@@ -107,7 +107,7 @@ if status not in (cp_model.OPTIMAL, cp_model.FEASIBLE):
 
 ---
 
-### 면접에서 나올 만한 질문
+### 다시 설명해볼 질문
 1. 왜 단순 분할/그리디가 아니라 CP-SAT였나? 조건이 늘 때 무엇이 달라지나?
 2. 결정변수·hard 제약·soft 목적함수를 각각 어떻게 나눴나?
 3. INFEASIBLE을 어떻게 다뤘나? 사용자에게 어떻게 이어졌나?
