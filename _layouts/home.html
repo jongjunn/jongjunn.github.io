@@ -52,7 +52,7 @@ layout: default
       items.forEach(function (it) {
         var cats = (it.getAttribute('data-cats') || '').split(' ');
         var match = f === 'all' || cats.indexOf(f) > -1;
-        it.hidden = !match;
+        it.classList.toggle('is-hidden', !match);
         if (match) shown++;
       });
       if (empty) empty.hidden = shown !== 0;

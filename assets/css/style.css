@@ -204,6 +204,7 @@ a { color: inherit; }
   gap: 18px;
 }
 .post-item { display: block; }
+.post-item.is-hidden { display: none; }
 .card {
   display: flex;
   flex-direction: column;

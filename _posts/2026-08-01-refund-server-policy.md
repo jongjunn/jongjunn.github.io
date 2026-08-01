@@ -20,8 +20,29 @@ tags: [환불, 서버정책, 동시성]
 
 여기서 중요한 점은 `10% 이하`가 아니라 `10% 미만`이라는 것이다. 코드도 `progressPercent < 10`으로 판단한다.
 
-코드 출처:  
-https://github.com/Hard-Click/Hard-Click-BackEnd/blob/b37aae8cbca2e941f615827d4c5a6cd10df2d430/src/main/java/com/wanted/backend/domain/order/domain/policy/OrderRefundPolicy.java#L14-L33
+```java
+// OrderRefundPolicy.java  (L14-L33)
+public static final int REFUND_WINDOW_DAYS = 7;
+/** 이 값 "이상" 진도면 환불 불가. 즉 10% 미만만 허용. */
+public static final int MAX_REFUNDABLE_PROGRESS_PERCENT = 10;
+
+private OrderRefundPolicy() {
+}
+
+public static boolean withinRefundWindow(LocalDateTime paidAt, LocalDateTime now) {
+    if (paidAt == null) {
+        return false;
+    }
+    return !now.isAfter(paidAt.plusDays(REFUND_WINDOW_DAYS));
+}
+
+public static boolean progressWithinLimit(int progressPercent) {
+    return progressPercent < MAX_REFUNDABLE_PROGRESS_PERCENT;
+}
+
+public static boolean isCourseItemRefundable(LocalDateTime paidAt, LocalDateTime now, int progressPercent) {
+    return withinRefundWindow(paidAt, now) && progressWithinLimit(progressPercent);
+```
 
 ## 정책 숫자를 별도 객체로 분리한 이유
 
@@ -35,49 +56,154 @@ https://github.com/Hard-Click/Hard-Click-BackEnd/blob/b37aae8cbca2e941f615827d4c
 
 강의 환불 서비스는 먼저 같은 주문 항목에 대한 동시 환불을 막기 위해 `order:refund:lock:{orderId}:{courseId}` 형태의 Redis 락을 사용한다.
 
-코드 출처:  
-https://github.com/Hard-Click/Hard-Click-BackEnd/blob/b37aae8cbca2e941f615827d4c5a6cd10df2d430/src/main/java/com/wanted/backend/domain/order/application/service/RefundOrderItemService.java#L37-L52
+```java
+// RefundOrderItemService.java  (L37-L52)
+private static final String CANCEL_REASON = "학생 요청에 의한 강의 환불";
+private static final String LOCK_KEY_PREFIX = "order:refund:lock:";
+private static final Duration LOCK_TTL = Duration.ofSeconds(30);
+
+private final OrderRepository orderRepository;
+private final OrderEnrollmentRevocationPort enrollmentRevocationPort;
+private final OrderCourseProgressPort orderCourseProgressPort;
+private final PgClient pgClient;
+private final DistributedLock distributedLock;
+private final Clock clock;
+
+@Override
+public void refund(Long memberId, Long orderId, Long courseId, String idempotencyKey) {
+    // 동일 주문 항목에 대한 동시 환불 방지
+    distributedLock.runWithLock(LOCK_KEY_PREFIX + orderId + ":" + courseId, LOCK_TTL, () -> {
+        // Step 1: 검증 (짧은 읽기 전용 TX)
+```
 
 락 안에서는 주문 소유자, 주문 상태, 주문 항목 존재 여부, 이미 환불된 항목인지 여부를 다시 검증한다. 이미 환불된 항목이면 조용히 반환한다. 같은 요청이 늦게 들어와도 PG cancel을 다시 호출하지 않기 위한 선택이다.
 
-코드 출처:  
-https://github.com/Hard-Click/Hard-Click-BackEnd/blob/b37aae8cbca2e941f615827d4c5a6cd10df2d430/src/main/java/com/wanted/backend/domain/order/application/service/RefundOrderItemService.java#L53-L70
+```java
+// RefundOrderItemService.java  (L53-L70)
+Order order = orderRepository.findById(orderId)
+        .orElseThrow(() -> new BusinessException(ErrorCode.ORDER_NOT_FOUND));
+
+if (!order.getMemberId().equals(memberId)) {
+    throw new BusinessException(ErrorCode.ORDER_ACCESS_DENIED);
+}
+
+if (order.getStatus() != OrderStatus.PAID && order.getStatus() != OrderStatus.PARTIAL_REFUNDED) {
+    throw new BusinessException(ErrorCode.ORDER_NOT_REFUNDABLE);
+}
+
+OrderItem item = order.getItems().stream()
+        .filter(i -> courseId.equals(i.getCourseId()))
+        .findFirst()
+        .orElseThrow(() -> new BusinessException(ErrorCode.ORDER_ITEM_NOT_FOUND));
+
+if (item.isRefunded()) {
+    return;
+```
 
 그 다음 서버 현재 시각 기준으로 환불 기간을 확인하고, 현재 진도율을 조회해 10% 미만인지 다시 판단한다.
 
-코드 출처:  
-https://github.com/Hard-Click/Hard-Click-BackEnd/blob/b37aae8cbca2e941f615827d4c5a6cd10df2d430/src/main/java/com/wanted/backend/domain/order/application/service/RefundOrderItemService.java#L73-L83
+```java
+// RefundOrderItemService.java  (L73-L83)
+// 환불 정책 재검증(서버 강제): 프론트 문구(7일 이내 + 진도율 10% 미만)만으론 우회 가능하므로
+// 실제 환불 실행 시점에 다시 확인한다. GetOrderService.refundable과 동일 규칙(OrderRefundPolicy)을 공유.
+LocalDateTime now = LocalDateTime.now(clock);
+if (!OrderRefundPolicy.withinRefundWindow(order.getPaidAt(), now)) {
+    throw new BusinessException(ErrorCode.REFUND_WINDOW_EXPIRED);
+}
+int progressPercent = orderCourseProgressPort
+        .findProgressPercents(memberId, List.of(courseId))
+        .getOrDefault(courseId, 0);
+if (!OrderRefundPolicy.progressWithinLimit(progressPercent)) {
+    throw new BusinessException(ErrorCode.REFUND_PROGRESS_EXCEEDED);
+```
 
 ## 부분환불과 주문 상태 전이
 
 강의 여러 개가 한 주문에 묶여 있을 수 있기 때문에 환불은 주문 전체가 아니라 주문 항목 단위로 처리된다. 환불 후 다른 미환불 항목이 남아 있으면 주문 상태는 `PARTIAL_REFUNDED`, 모든 항목이 환불되면 `REFUNDED`가 된다.
 
-코드 출처:  
-https://github.com/Hard-Click/Hard-Click-BackEnd/blob/b37aae8cbca2e941f615827d4c5a6cd10df2d430/src/main/java/com/wanted/backend/domain/order/application/service/RefundOrderItemService.java#L86-L100
+```java
+// RefundOrderItemService.java  (L86-L100)
+boolean allOthersAlreadyRefunded = order.getItems().stream()
+        .filter(i -> !courseId.equals(i.getCourseId()))
+        .allMatch(OrderItem::isRefunded);
+OrderStatus newStatus = allOthersAlreadyRefunded ? OrderStatus.REFUNDED : OrderStatus.PARTIAL_REFUNDED;
+
+// Step 2: PG 취소 — @Transactional 밖에서 실행 (DB 커넥션 미점유)
+// PG 취소 성공 후 DB 업데이트 실패 시 운영자 수동 보정 대상(ERROR 로그)
+try {
+    pgClient.cancel(order.getPaymentKey(), item.getPrice(), CANCEL_REASON);
+} catch (RuntimeException e) {
+    throw new BusinessException(ErrorCode.PG_TIMEOUT, e);
+}
+
+// Step 3: DB 상태 갱신 (orderRepository.refundItem 자체 @Transactional)
+orderRepository.refundItem(orderId, courseId, newStatus);
+```
 
 DB 상태 전이는 repository의 트랜잭션 메서드에서 수행된다. 이 메서드는 주문 상태를 바꾸고, 대상 주문 항목을 환불 처리한다.
 
-코드 출처:  
-https://github.com/Hard-Click/Hard-Click-BackEnd/blob/b37aae8cbca2e941f615827d4c5a6cd10df2d430/src/main/java/com/wanted/backend/domain/order/infrastructure/persistence/OrderRepositoryAdapter.java#L73-L83
+```java
+// OrderRepositoryAdapter.java  (L73-L83)
+public void refundItem(Long orderId, Long courseId, OrderStatus newOrderStatus) {
+    OrderEntity orderEntity = orderRepository.findById(orderId)
+            .orElseThrow(() -> new BusinessException(ErrorCode.ORDER_NOT_FOUND));
+    orderEntity.updateStatus(newOrderStatus);
+
+    OrderItemEntity itemEntity = orderItemRepository.findByOrderIdAndCourseId(orderId, courseId)
+            .orElseThrow(() -> new BusinessException(ErrorCode.ORDER_ITEM_NOT_FOUND));
+    if (itemEntity.isRefunded()) {
+        throw new BusinessException(ErrorCode.ORDER_ITEM_ALREADY_REFUNDED);
+    }
+    itemEntity.markRefunded();
+```
 
 구독 환불은 강의 항목 환불과 다르게 주문 단위로 처리한다. 구독 환불 금액은 `min(연간권가, 결제액)`으로 제한해 결제 원금을 넘지 않게 한다.
 
-코드 출처:  
-https://github.com/Hard-Click/Hard-Click-BackEnd/blob/b37aae8cbca2e941f615827d4c5a6cd10df2d430/src/main/java/com/wanted/backend/domain/order/application/service/RefundSubscriptionService.java#L53-L58
+```java
+// RefundSubscriptionService.java  (L53-L58)
+// 환불 신청일 기준 일할 계산: 남은 D-day(수능까지) × 일일 단가 = 미사용분.
+// 결제 원금을 넘지 않도록 상한을 둔다(가격 정책 변동 대비).
+int refundAmount = Math.min(subscriptionPlanPort.getAnnualPass().price(), order.getFinalAmount());
+
+try {
+    pgClient.cancel(order.getPaymentKey(), refundAmount, CANCEL_REASON);
+```
 
 ## Toss cancel 연동과 보정 리스크
 
 운영 프로필에서는 Toss cancel API로 실제 PG 취소 요청을 보낸다.
 
-코드 출처:  
-https://github.com/Hard-Click/Hard-Click-BackEnd/blob/b37aae8cbca2e941f615827d4c5a6cd10df2d430/src/main/java/com/wanted/backend/domain/payment/infrastructure/pg/TossPaymentClient.java#L87-L100
+```java
+// TossPaymentClient.java  (L87-L100)
+public void cancel(String paymentKey, Integer cancelAmount, String cancelReason) {
+    try {
+        restClient.post()
+                .uri("/v1/payments/{paymentKey}/cancel", paymentKey)
+                .body(Map.of(
+                        "cancelReason", cancelReason,
+                        "cancelAmount", cancelAmount
+                ))
+                .retrieve()
+                .toBodilessEntity();
+    } catch (RestClientResponseException e) {
+        HttpStatusCode status = e.getStatusCode();
+        log.error("Toss cancel 실패 (paymentKey={}, status={}): {}", paymentKey, status, e.getResponseBodyAsString());
+        throw new TossPaymentException("Toss cancel 실패: " + e.getResponseBodyAsString(), e);
+```
 
 현재 구현은 PG cancel을 먼저 호출하고, 성공하면 DB 상태를 갱신한다. 이 구조는 DB 커넥션을 PG 호출 동안 잡지 않는 장점이 있지만, PG cancel 성공 후 DB 갱신이 실패하면 운영 보정이 필요하다.
 
 또 DB 환불 상태 갱신 후 수강권 회수에 실패해도 환불 자체를 rollback하지 않고 error log를 남긴다.
 
-코드 출처:  
-https://github.com/Hard-Click/Hard-Click-BackEnd/blob/b37aae8cbca2e941f615827d4c5a6cd10df2d430/src/main/java/com/wanted/backend/domain/order/application/service/RefundOrderItemService.java#L99-L104
+```java
+// RefundOrderItemService.java  (L99-L104)
+// Step 3: DB 상태 갱신 (orderRepository.refundItem 자체 @Transactional)
+orderRepository.refundItem(orderId, courseId, newStatus);
+try {
+    enrollmentRevocationPort.revoke(memberId, courseId);
+} catch (RuntimeException e) {
+    log.error("[REFUND_REVOKE_FAILED] DB 환불 완료됐지만 수강권 박탈 실패 — 수동 보정 필요. orderId: {}, courseId: {}", orderId, courseId, e);
+```
 
 따라서 이 구현은 "완성된 정산 시스템"이라고 말하기보다, "서버 정책 강제와 상태 전이는 구현했고, PG와 DB 사이 보정 리스크를 인지하고 있다"고 설명하는 편이 정확하다.
 
