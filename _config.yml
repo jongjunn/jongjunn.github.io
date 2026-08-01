@@ -1,0 +1,16 @@
+title: 박종준 기술 블로그
+description: 백엔드 · 결제 정합성 · 동시성 · 트러블슈팅 기록
+author:
+  name: 박종준
+email: jongjunny2001@gmail.com
+baseurl: ""
+url: "https://jongjunn.github.io"
+theme: minima
+minima:
+  social_links:
+    github: jongjunn
+plugins:
+  - jekyll-feed
+  - jekyll-seo-tag
+header_pages:
+  - about.md
