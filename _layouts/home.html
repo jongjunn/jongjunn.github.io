@@ -1,16 +1,15 @@
 ---
 layout: default
 ---
-<section class="hero glass">
+<section class="hero">
   <h1>{{ site.title }}</h1>
   <p>{{ site.description }}</p>
   {{ content }}
 </section>
-
 <ul class="post-list">
   {% for post in site.posts %}
   <li>
-    <a class="card glass" href="{{ post.url | relative_url }}">
+    <a class="card" href="{{ post.url | relative_url }}">
       <div class="cats">
         {% for c in post.categories %}<span class="tag">{{ c }}</span>{% endfor %}
       </div>

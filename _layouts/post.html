@@ -1,7 +1,7 @@
 ---
 layout: default
 ---
-<article class="post glass">
+<article class="post">
   <div class="cats">
     {% for c in page.categories %}<span class="tag">{{ c }}</span>{% endfor %}
   </div>
@@ -13,5 +13,5 @@ layout: default
   <div class="content">
     {{ content }}
   </div>
-  <a class="back" href="{{ '/' | relative_url }}">← 목록으로</a>
+  <a class="back" href="{{ '/' | relative_url }}">글 목록으로</a>
 </article>
