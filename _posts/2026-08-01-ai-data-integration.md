@@ -29,6 +29,8 @@ Flown LMS에는 개인화 학습 스케줄, 복습일 계산, 이탈위험 점�
 
 스케줄러는 DB나 프레임워크를 직접 import하지 않는 순수 도메인 함수로 뒀다. 외부 데이터는 파라미터로 받고, 결과는 `lesson_id -> week_index` 형태의 값으로 돌려준다.
 
+원본 코드: [Python-Server domain/scheduler.py:17-70](https://github.com/Hard-Click/Python-Server/blob/e24420f4bcf6950ce1aa430e4ce8c18e7b266fc3/domain/scheduler.py#L17-L70)
+
 ```python
 # domain/scheduler.py
 from ortools.sat.python import cp_model
@@ -78,7 +80,9 @@ def generate_weekly_schedule(lessons, weekly_caps, prerequisites=None):
 
 FSRS 쪽도 직접 알고리즘을 구현한 것이 아니라, 퀴즈 점수를 `Rating`으로 매핑하고 라이브러리의 `review_card`에 연결했다. 이 부분을 글에 명확히 남기는 이유는 과장하지 않기 위해서다.
 
-관련 코드: [FSRS 테이블 마이그레이션](https://github.com/Hard-Click/Hard-Click-BackEnd/blob/ea50993a49340ee2bce8b53b439211c541c4da81/src/main/resources/db/migration/V3.1.4__add_fsrs_review_tables.sql#L1-L53), [ReviewCompletionAdapter.java:14-90](https://github.com/Hard-Click/Hard-Click-BackEnd/blob/ea50993a49340ee2bce8b53b439211c541c4da81/src/main/java/com/wanted/backend/domain/quiz/infrastructure/review/ReviewCompletionAdapter.java#L14-L90)
+원본 코드: [Python-Server domain/review.py:10-43](https://github.com/Hard-Click/Python-Server/blob/e24420f4bcf6950ce1aa430e4ce8c18e7b266fc3/domain/review.py#L10-L43)
+
+연동 코드: [FSRS 테이블 마이그레이션](https://github.com/Hard-Click/Hard-Click-BackEnd/blob/ea50993a49340ee2bce8b53b439211c541c4da81/src/main/resources/db/migration/V3.1.4__add_fsrs_review_tables.sql#L1-L53), [ReviewCompletionAdapter.java:14-90](https://github.com/Hard-Click/Hard-Click-BackEnd/blob/ea50993a49340ee2bce8b53b439211c541c4da81/src/main/java/com/wanted/backend/domain/quiz/infrastructure/review/ReviewCompletionAdapter.java#L14-L90)
 
 ```python
 # domain/review.py
@@ -123,6 +127,8 @@ def review_lesson(
 "위험도 0.72"만 있으면 설명이 어렵다. 하지만 "위험도 0.72이고, 가장 큰 이유는 최근 미접속일"이라고 말할 수 있으면 운영자나 사용자에게 기능을 설명할 수 있다. 이 단계에서는 예측 성능보다 설명 가능성이 더 중요했다.
 
 이탈위험 점수도 총점만 만들지 않고 축별 기여도와 `top_reason`을 함께 반환했다. Java 백엔드는 이 `top_reason` 코드(`recency`, `streak`, `quiz`)를 화면 라벨로 매핑한다.
+
+원본 코드: [Python-Server domain/risk.py:8-77](https://github.com/Hard-Click/Python-Server/blob/e24420f4bcf6950ce1aa430e4ce8c18e7b266fc3/domain/risk.py#L8-L77)
 
 ```python
 # domain/risk.py
@@ -188,6 +194,7 @@ public void onEnrollmentStarted(EnrollmentStartedEvent event) {
 Python 서버 호출 어댑터는 timeout을 명시하고, `schedule.ai.enabled=false`일 때는 즉시 생성을 건너뛴다. 운영에서 기능을 끄더라도 주간 배치가 백업 경로가 된다.
 
 원본 코드: [ScheduleGenerationAiAdapter.java:22-60](https://github.com/Hard-Click/Hard-Click-BackEnd/blob/ea50993a49340ee2bce8b53b439211c541c4da81/src/main/java/com/wanted/backend/domain/enrollment_management/infrastructure/ai/ScheduleGenerationAiAdapter.java#L22-L60)
+호출 대상: [Python-Server presentation/api.py:83-105](https://github.com/Hard-Click/Python-Server/blob/e24420f4bcf6950ce1aa430e4ce8c18e7b266fc3/presentation/api.py#L83-L105), [GenerateWeeklyScheduleUseCase.execute:99-164](https://github.com/Hard-Click/Python-Server/blob/e24420f4bcf6950ce1aa430e4ce8c18e7b266fc3/application/use_cases.py#L99-L164)
 
 ```java
 // ScheduleGenerationAiAdapter.java
