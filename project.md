@@ -8,6 +8,10 @@ permalink: /project/
 
 Flown LMS는 온라인 강의 수강, 결제, 학습 관리, 복습 스케줄을 다루는 학습 서비스 프로젝트입니다. 저는 백엔드에서 결제 이후 수강권 지급, 영상 진도 저장, 학습 스케줄 생성, 커뮤니티 조회처럼 사용자가 매일 밟는 흐름이 어긋나지 않도록 API와 운영 기준을 정리했습니다.
 
+대표 코드: [Hard-Click-BackEnd](https://github.com/Hard-Click/Hard-Click-BackEnd)  
+기여 기준: `develop` 브랜치 기준 전체 1,049 commits 중 `jongjunn` 236 commits  
+기여 확인: [작성 커밋](https://github.com/Hard-Click/Hard-Click-BackEnd/commits/develop/?author=jongjunn), [작성 PR](https://github.com/Hard-Click/Hard-Click-BackEnd/pulls?q=is%3Apr+author%3Ajongjunn)
+
 이 프로젝트에서 가장 많이 고민한 것은 기능을 하나 더 붙이는 일이 아니라, 같은 요청이 반복되거나 외부 시스템이 느려지거나 데이터가 이미 깨져 있어도 서버가 어떤 상태를 진실로 삼을지 정하는 일이었습니다. 그래서 글도 단순 구현 기록보다 문제 정의, 선택 기준, 코드 근거, 검증 결과, 남은 한계를 중심으로 정리했습니다.
 
 ## 맡은 영역

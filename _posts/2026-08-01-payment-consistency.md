@@ -56,6 +56,8 @@ Redis 락만으로 결제를 완전히 설명하지 않은 이유는 분명하�
 
 실제 결제 확정 서비스의 핵심 흐름은 아래와 같다. `READY`가 아닌 주문은 바로 멱등 응답으로 돌리고, `SETNX` 락을 잡은 뒤에도 주문을 다시 읽는다. PG confirm은 이 두 방어선을 지난 뒤에만 호출된다.
 
+원본 코드: [ConfirmOrderPaymentService.java:75-121](https://github.com/Hard-Click/Hard-Click-BackEnd/blob/ea50993a49340ee2bce8b53b439211c541c4da81/src/main/java/com/wanted/backend/domain/order/application/service/ConfirmOrderPaymentService.java#L75-L121)
+
 ```java
 // ConfirmOrderPaymentService.java
 private Result doConfirm(Long memberId, String orderNo, String paymentKey, Integer amount, String idempotencyKey) {
@@ -93,6 +95,8 @@ private Result doConfirm(Long memberId, String orderNo, String paymentKey, Integ
 
 락 해제도 단순 `DEL`이 아니라 토큰을 비교한 뒤 지운다. 락 TTL이 만료된 뒤 다른 요청이 같은 key를 잡았는데, 늦게 끝난 요청이 남의 락을 지우는 상황을 막기 위해서다.
 
+원본 코드: [UNLOCK_SCRIPT](https://github.com/Hard-Click/Hard-Click-BackEnd/blob/ea50993a49340ee2bce8b53b439211c541c4da81/src/main/java/com/wanted/backend/domain/order/application/service/ConfirmOrderPaymentService.java#L45-L47), [releaseLockSafely](https://github.com/Hard-Click/Hard-Click-BackEnd/blob/ea50993a49340ee2bce8b53b439211c541c4da81/src/main/java/com/wanted/backend/domain/order/application/service/ConfirmOrderPaymentService.java#L171-L173)
+
 ```java
 private static final DefaultRedisScript<Long> UNLOCK_SCRIPT = new DefaultRedisScript<>(
         "if redis.call('get', KEYS[1]) == ARGV[1] then return redis.call('del', KEYS[1]) else return 0 end",
@@ -100,6 +104,8 @@ private static final DefaultRedisScript<Long> UNLOCK_SCRIPT = new DefaultRedisSc
 ```
 
 이 멱등키는 백엔드 내부 구현으로만 두지 않았다. 프론트엔드 연동 문서와 Swagger에 `POST /api/payments/confirm` 호출 시 `Idempotency-Key: {UUID v4}` 헤더가 필요하다고 명시했다. 중복 결제 방어는 서버 코드만의 문제가 아니라, 클라이언트가 어떤 키를 생성하고 재시도 때 같은 키를 보내야 하는지까지 포함한 API 계약이었다.
+
+원본 코드: [PaymentConfirmController.java:43-71](https://github.com/Hard-Click/Hard-Click-BackEnd/blob/ea50993a49340ee2bce8b53b439211c541c4da81/src/main/java/com/wanted/backend/domain/payment/presentation/PaymentConfirmController.java#L43-L71)
 
 ```java
 // PaymentConfirmController.java
@@ -138,6 +144,8 @@ public ResponseEntity<ApiResponse<PaymentConfirmResponse>> confirm(
 
 또한 결제 결과를 로그 한 줄에만 남기지 않고 Micrometer 지표로 분리했다. 성공, 중복, 실패를 같은 counter의 `status` 태그로 남기고, 결제 처리 시간은 timer로 기록했다. 그래야 "중복 결제 0건", "결제 성공률", "P95 처리시간"을 각각 다른 SLO로 볼 수 있다.
 
+원본 코드: [ConfirmOrderPaymentService.java:58-72](https://github.com/Hard-Click/Hard-Click-BackEnd/blob/ea50993a49340ee2bce8b53b439211c541c4da81/src/main/java/com/wanted/backend/domain/order/application/service/ConfirmOrderPaymentService.java#L58-L72)
+
 ```java
 // ConfirmOrderPaymentService.java
 Counter.builder("order.payment.result")
@@ -156,6 +164,8 @@ sample.stop(Timer.builder("order.payment.processing.duration")
 그래서 PG 호출은 DB 트랜잭션 밖에 두고, 내부 상태 변경은 짧게 가져가는 쪽을 택했다. 이 선택은 하나의 큰 원자성을 포기하는 대신, 긴 네트워크 대기가 DB 트랜잭션을 붙잡지 않게 한다. 대신 PG 성공 후 DB 반영 실패 같은 보정 리스크가 남는다. 이 리스크는 로그, 메트릭, 재시도 가능 경로로 드러내야 한다.
 
 Toss 연동부에서도 응답값을 그대로 신뢰하지 않고 요청값과 다시 대조했다. 클라이언트가 보낸 금액을 믿는 것이 아니라, PG 응답이 우리가 승인하려던 결제와 같은지 확인하는 경계다.
+
+원본 코드: [TossPaymentClient.java:47-78](https://github.com/Hard-Click/Hard-Click-BackEnd/blob/ea50993a49340ee2bce8b53b439211c541c4da81/src/main/java/com/wanted/backend/domain/payment/infrastructure/pg/TossPaymentClient.java#L47-L78)
 
 ```java
 // TossPaymentClient.java
@@ -196,6 +206,8 @@ if (totalAmount == null || !String.valueOf(totalAmount).equals(String.valueOf(am
 
 권한 지급 실패는 주문을 되돌리지 않고 운영자가 볼 수 있는 실패로 남겼다. 결제는 이미 PG에서 확정된 외부 사실이기 때문에, 내부 지급 실패를 조용히 삼키는 대신 메트릭과 로그로 드러냈다.
 
+원본 코드: [ConfirmOrderPaymentService.java:132-158](https://github.com/Hard-Click/Hard-Click-BackEnd/blob/ea50993a49340ee2bce8b53b439211c541c4da81/src/main/java/com/wanted/backend/domain/order/application/service/ConfirmOrderPaymentService.java#L132-L158)
+
 ```java
 // ConfirmOrderPaymentService.java
 private void dispatchAccessGrant(Order order) {
@@ -229,6 +241,8 @@ private void dispatchAccessGrant(Order order) {
 
 정책 숫자는 서비스나 컨트롤러에 흩어두지 않고 별도 정책 객체로 뺐다. 조회 화면과 환불 실행 경로가 같은 메서드를 보게 하려는 선택이다.
 
+원본 코드: [OrderRefundPolicy.java:14-34](https://github.com/Hard-Click/Hard-Click-BackEnd/blob/ea50993a49340ee2bce8b53b439211c541c4da81/src/main/java/com/wanted/backend/domain/order/domain/policy/OrderRefundPolicy.java#L14-L34)
+
 ```java
 // OrderRefundPolicy.java
 public static final int REFUND_WINDOW_DAYS = 7;
@@ -251,6 +265,8 @@ public static boolean isCourseItemRefundable(LocalDateTime paidAt, LocalDateTime
 ```
 
 실행 서비스에서도 같은 원칙을 유지했다. 주문 항목 단위로 `order:refund:lock:{orderId}:{courseId}` 락을 잡고, 주문 소유자와 주문 상태, 이미 환불된 항목인지, 7일 이내인지, 진도율이 10% 미만인지 다시 확인한다. 그 뒤에야 Toss cancel을 호출하고 주문 상태를 갱신한다.
+
+원본 코드: [RefundOrderItemService.java:49-105](https://github.com/Hard-Click/Hard-Click-BackEnd/blob/ea50993a49340ee2bce8b53b439211c541c4da81/src/main/java/com/wanted/backend/domain/order/application/service/RefundOrderItemService.java#L49-L105)
 
 ```java
 // RefundOrderItemService.java

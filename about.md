@@ -16,4 +16,5 @@ Flown LMS 프로젝트를 만들며 결제 승인, 환불 정책, 수강권 지�
 
 - [Resume](/resume/)
 - [GitHub](https://github.com/jongjunn)
+- [대표 코드](https://github.com/Hard-Click/Hard-Click-BackEnd)
 - <jongjunny2001@gmail.com>

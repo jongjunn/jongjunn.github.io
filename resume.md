@@ -11,6 +11,15 @@ Backend Developer
 - GitHub: [jongjunn](https://github.com/jongjunn)
 - Blog: [jongjunn.github.io](https://jongjunn.github.io)
 
+## Summary
+
+- 지원 포지션: 신입/주니어 백엔드 개발자
+- 교육: 원티드 백엔드 개발자 양성과정 (2026.02 ~ 2026.08)
+- 대표 프로젝트: Flown LMS (2026.06 ~ 2026.07, 4인 백엔드 팀)
+- 대표 코드: [Hard-Click-BackEnd](https://github.com/Hard-Click/Hard-Click-BackEnd) (`develop` 기준 1,049 commits, `jongjunn` 236 commits)
+- 기여 확인: [작성 PR 보기](https://github.com/Hard-Click/Hard-Click-BackEnd/pulls?q=is%3Apr+author%3Ajongjunn), [작성 커밋 보기](https://github.com/Hard-Click/Hard-Click-BackEnd/commits/develop/?author=jongjunn)
+- 입사 가능 시점: 협의 가능
+
 ## Profile
 
 Java/Spring Boot 기반으로 온라인 학습 서비스의 결제, 환불, 수강권 지급, 영상 진도, 학습 스케줄, 커뮤니티 조회 성능을 다뤘습니다.
@@ -30,6 +39,8 @@ Java/Spring Boot 기반으로 온라인 학습 서비스의 결제, 환불, 수�
 ### Flown LMS
 
 온라인 강의 수강, 결제, 학습 관리, 복습 스케줄을 다루는 LMS 프로젝트입니다. 백엔드에서 결제 정합성, 학습 데이터 무결성, 커뮤니티 조회 성능, 운영 기준 정리를 맡았습니다.
+
+[대표 코드](https://github.com/Hard-Click/Hard-Click-BackEnd) / [작성 커밋](https://github.com/Hard-Click/Hard-Click-BackEnd/commits/develop/?author=jongjunn) / [작성 PR](https://github.com/Hard-Click/Hard-Click-BackEnd/pulls?q=is%3Apr+author%3Ajongjunn)
 
 [프로젝트 자세히 보기](/project/)
 
