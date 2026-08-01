@@ -20,13 +20,13 @@ Flown LMS는 온라인 강의 수강, 결제, 학습 관리, 복습 스케줄을
 
 - Backend: Java, Spring Boot, JPA, MySQL, Redis
 - AI Server: Python, FastAPI, OR-Tools, FSRS
-- Operation: Flyway, Swagger/OpenAPI, Sentry, Grafana, Datadog
+- Operation: Flyway, Swagger/OpenAPI, Sentry, Prometheus, Grafana, Alertmanager, Datadog
 - Collaboration: GitHub Issue/PR, Notion API 표, Slack 공유 흐름
 
 ## 블로그에서 정리한 문제
 
-- [결제 중복 방어 리팩토링: 현재 주문 결제 경로의 멱등성 설계]({% post_url 2026-08-01-payment-consistency %})
+- [과금 이후 권한까지: LMS 결제 정합성을 지키는 백엔드 설계]({% post_url 2026-08-01-payment-consistency %})
 - [조회 후 없으면 INSERT는 왜 깨지는가: 유니크 제약과 멱등 처리]({% post_url 2026-08-01-concurrency-db %})
-- [CRUD가 아닌 백엔드: 학습 스케줄을 CP-SAT 제약 최적화로 짠 이유]({% post_url 2026-08-01-ai-data-integration %})
+- [AI라고 부르기 전에: CP-SAT, FSRS, rule-based 기능을 서비스에 붙인 기록]({% post_url 2026-08-01-ai-data-integration %})
 - [협업을 도구가 아니라 계약으로 만들기: API, DB, 오류 공유 기준]({% post_url 2026-08-01-ops-collaboration-quality %})
 - [게시글 목록 병목 줄이기: 인덱스, N+1 제거, COUNT 줄이기]({% post_url 2026-08-01-community-performance %})

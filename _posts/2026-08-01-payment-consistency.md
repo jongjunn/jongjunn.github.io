@@ -3,7 +3,7 @@ layout: post
 title: "과금 이후 권한까지: LMS 결제 정합성을 지키는 백엔드 설계"
 date: 2026-08-01 23:00:00 +0900
 categories: [백엔드, 결제]
-tags: [정합성, 멱등성, PG, 환불]
+tags: [정합성, 멱등성, PG, 환불, SLO]
 ---
 
 Flown LMS에서 결제·주문·환불 도메인을 맡으며 가장 중요하게 본 것은 "결제가 성공했는가"가 아니라 **과금 이후 서비스 권한까지 일관되게 맞았는가**였다. PG 승인이 성공했는데 구독권이나 수강권이 생기지 않으면, 서버 입장에서는 일부 로직 실패일 수 있어도 사용자에게는 바로 신뢰 문제로 보인다.
@@ -80,7 +80,55 @@ private static final DefaultRedisScript<Long> UNLOCK_SCRIPT = new DefaultRedisSc
         Long.class);
 ```
 
+이 멱등키는 백엔드 내부 구현으로만 두지 않았다. 프론트엔드 연동 문서와 Swagger에 `POST /api/payments/confirm` 호출 시 `Idempotency-Key: {UUID v4}` 헤더가 필요하다고 명시했다. 중복 결제 방어는 서버 코드만의 문제가 아니라, 클라이언트가 어떤 키를 생성하고 재시도 때 같은 키를 보내야 하는지까지 포함한 API 계약이었다.
+
+```java
+// PaymentConfirmController.java
+public ResponseEntity<ApiResponse<PaymentConfirmResponse>> confirm(
+        @Valid @RequestBody PaymentConfirmRequest request,
+        @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey,
+        @AuthenticationPrincipal CustomUserDetails userDetails
+) {
+    if (idempotencyKey == null || idempotencyKey.isBlank()) {
+        throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE);
+    }
+
+    String normalizedIdempotencyKey = idempotencyKey.trim();
+    try {
+        UUID.fromString(normalizedIdempotencyKey);
+    } catch (IllegalArgumentException e) {
+        throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE);
+    }
+
+    ConfirmOrderPaymentUseCase.Result result = confirmOrderPaymentUseCase.confirm(
+            userDetails.getMemberId(),
+            request.orderId(),
+            request.paymentKey(),
+            request.amount(),
+            normalizedIdempotencyKey
+    );
+
+    PaymentConfirmResponse response = PaymentConfirmResponse.from(result);
+    return result.duplicate()
+            ? ApiResponse.success("이미 처리된 결제 요청입니다.", response)
+            : ApiResponse.created("결제가 확정되었습니다.", response);
+}
+```
+
 동시성 테스트에서는 동일 멱등키로 50개 스레드가 동시에 결제 확정을 호출했을 때 PG confirm과 DB `markPaid`가 각각 1회만 실행되는지 확인했다. 이 테스트가 증명하는 범위는 "같은 멱등키의 동시 요청에서 중복 PG 호출을 막는다"는 것이다. k6 p95, 처리량, 실서비스 장애율은 측정하지 않았으므로 성과 수치로 말하지 않았다.
+
+또한 결제 결과를 로그 한 줄에만 남기지 않고 Micrometer 지표로 분리했다. 성공, 중복, 실패를 같은 counter의 `status` 태그로 남기고, 결제 처리 시간은 timer로 기록했다. 그래야 "중복 결제 0건", "결제 성공률", "P95 처리시간"을 각각 다른 SLO로 볼 수 있다.
+
+```java
+// ConfirmOrderPaymentService.java
+Counter.builder("order.payment.result")
+        .tag("status", outcome)
+        .register(meterRegistry)
+        .increment();
+
+sample.stop(Timer.builder("order.payment.processing.duration")
+        .register(meterRegistry));
+```
 
 ## PG 호출과 DB 트랜잭션의 경계
 
@@ -183,8 +231,61 @@ public static boolean isCourseItemRefundable(LocalDateTime paidAt, LocalDateTime
 }
 ```
 
+실행 서비스에서도 같은 원칙을 유지했다. 주문 항목 단위로 `order:refund:lock:{orderId}:{courseId}` 락을 잡고, 주문 소유자와 주문 상태, 이미 환불된 항목인지, 7일 이내인지, 진도율이 10% 미만인지 다시 확인한다. 그 뒤에야 Toss cancel을 호출하고 주문 상태를 갱신한다.
+
+```java
+// RefundOrderItemService.java
+public void refund(Long memberId, Long orderId, Long courseId, String idempotencyKey) {
+    distributedLock.runWithLock(LOCK_KEY_PREFIX + orderId + ":" + courseId, LOCK_TTL, () -> {
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.ORDER_NOT_FOUND));
+
+        if (!order.getMemberId().equals(memberId)) {
+            throw new BusinessException(ErrorCode.ORDER_ACCESS_DENIED);
+        }
+        if (order.getStatus() != OrderStatus.PAID
+                && order.getStatus() != OrderStatus.PARTIAL_REFUNDED) {
+            throw new BusinessException(ErrorCode.ORDER_NOT_REFUNDABLE);
+        }
+
+        OrderItem item = order.getItems().stream()
+                .filter(i -> courseId.equals(i.getCourseId()))
+                .findFirst()
+                .orElseThrow(() -> new BusinessException(ErrorCode.ORDER_ITEM_NOT_FOUND));
+        if (item.isRefunded()) {
+            return;
+        }
+
+        LocalDateTime now = LocalDateTime.now(clock);
+        if (!OrderRefundPolicy.withinRefundWindow(order.getPaidAt(), now)) {
+            throw new BusinessException(ErrorCode.REFUND_WINDOW_EXPIRED);
+        }
+        int progressPercent = orderCourseProgressPort
+                .findProgressPercents(memberId, List.of(courseId))
+                .getOrDefault(courseId, 0);
+        if (!OrderRefundPolicy.progressWithinLimit(progressPercent)) {
+            throw new BusinessException(ErrorCode.REFUND_PROGRESS_EXCEEDED);
+        }
+
+        boolean allOthersAlreadyRefunded = order.getItems().stream()
+                .filter(i -> !courseId.equals(i.getCourseId()))
+                .allMatch(OrderItem::isRefunded);
+        OrderStatus newStatus = allOthersAlreadyRefunded
+                ? OrderStatus.REFUNDED
+                : OrderStatus.PARTIAL_REFUNDED;
+
+        pgClient.cancel(order.getPaymentKey(), item.getPrice(), CANCEL_REASON);
+        orderRepository.refundItem(orderId, courseId, newStatus);
+    });
+}
+```
+
+구독 환불은 강의 진도율이 없으므로 별도 경로로 뒀다. 대신 `order:refund:lock:subscription:{orderId}` 락을 사용해 같은 구독 주문의 중복 환불을 직렬화했다. 강의 환불과 구독 환불의 조건은 다르지만, "외부 PG 취소를 두 번 보내지 않는다"는 기준은 같았다.
+
 ## 남은 한계
 
 현재 결제 확정 경로에는 구형 구조에 있던 Redis 결과 캐시가 없다. 같은 멱등키의 응답 본문을 완전히 재현하는 것보다는 중복 과금 방어를 우선한 형태다. 또한 PG 성공 후 DB 반영 실패나 권한 지급 실패를 완전 자동 복구하려면 outbox, 보정 테이블, 재처리 worker, 관리자 보정 화면이 더 필요하다.
+
+환불 쪽도 아직 주문 상태 전이 중심이다. 설계 문서에는 환불 자체를 `PENDING`, `SUCCEEDED`, `FAILED` 상태 머신으로 남기고 PG 장애 재시도나 Circuit Breaker를 붙이는 방향까지 적어두었지만, 현재 코드에 완성된 것처럼 쓰지는 않으려 한다. 지금 구현에서 확실히 말할 수 있는 것은 동일 환불 요청을 락으로 직렬화하고, 화면의 `refundable` 값을 믿지 않고 서버 정책으로 다시 검증했다는 점이다.
 
 이 작업에서 남은 것은 "결제 API를 만들었다"가 아니라, 외부 PG와 내부 주문·권한 상태가 어긋날 수 있는 지점을 인정하고 어떤 상태를 진실로 삼을지, 실패를 어떻게 드러내고 보정할지 판단한 경험이었다.

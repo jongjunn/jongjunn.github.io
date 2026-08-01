@@ -17,7 +17,7 @@ permalink: /about/
 - Redis: 캐시, 멱등 처리, 중복 요청 방어
 - Flyway: 마이그레이션 파일 기반 스키마 변경 관리
 - Swagger / OpenAPI: API 명세와 프론트엔드 연동 확인
-- Sentry / Grafana / Datadog: 오류 추적, 지표 확인, 성능 병목 분석
+- Sentry / Prometheus / Grafana / Alertmanager / Datadog: 오류 추적, 지표 확인, 알림 라우팅, 성능 병목 분석
 - Python / FastAPI: AI 서버 API, 데이터 처리 흐름 구성
 - OR-Tools / FSRS: 학습 스케줄 최적화, 복습 간격 계산
 
